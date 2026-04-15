@@ -16,7 +16,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval requis par Next.js dev
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://api.checkallat.com https://storage.checkallat.com",
-      `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || ''}`,
+      "connect-src 'self' https://*.railway.app https://*.up.railway.app",
       "font-src 'self'",
       "frame-ancestors 'none'",
     ].join('; '),
