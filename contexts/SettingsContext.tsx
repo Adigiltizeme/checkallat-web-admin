@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiClient } from '@/lib/api';
+import { getAccessToken } from '@/lib/auth';
 
 interface PlatformSettings {
   minBookingAmount: number;
@@ -37,7 +38,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    loadSettings();
+    if (getAccessToken()) {
+      loadSettings();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const refreshSettings = async () => {
