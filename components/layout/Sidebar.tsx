@@ -15,6 +15,7 @@ import {
   Package,
   DollarSign,
   Star,
+  MapPin,
 } from 'lucide-react';
 
 const MENU_SECTIONS = [
@@ -36,6 +37,7 @@ const MENU_SECTIONS = [
     title: 'Transport',
     items: [
       { href: '/transport-requests', label: 'Demandes', icon: Package },
+      { href: '/transport-requests/live-map', label: 'Carte Live', icon: MapPin },
       { href: '/transport-requests/payment-stats', label: 'Stats Paiements', icon: DollarSign },
       { href: '/transport-requests/cash-disputes', label: 'Litiges Cash', icon: AlertCircle },
     ],

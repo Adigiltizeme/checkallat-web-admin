@@ -2,10 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { apiClient } from '@/lib/api';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCurrency } from '@/hooks/useCurrency';
+
+const TransportDetailMap = dynamic(
+  () => import('@/components/transport/TransportDetailMap'),
+  { ssr: false, loading: () => (
+    <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg border border-gray-200">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500" />
+    </div>
+  )},
+);
 
 // Status configuration matching the new implementation
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
@@ -386,7 +396,7 @@ export default function TransportRequestDetailPage() {
         </div>
       )}
 
-      {/* Timeline */}
+      {/* Timeline + Carte */}
       {request.status !== 'pending' && request.status !== 'cancelled' && (
         <div className="bg-white p-6 rounded-lg shadow">
           <div
@@ -398,26 +408,55 @@ export default function TransportRequestDetailPage() {
               {isTimelineExpanded ? '−' : '+'}
             </button>
           </div>
-          {isTimelineExpanded && (
-            <div className="space-y-4 mt-6">
-              {timeline.map((step, i) => {
-                const isPast = i < currentIndex;
-                const isCurrent = i === currentIndex;
-                const cfg = STATUS_CONFIG[step.status];
 
-                return (
-                  <div key={step.status} className="flex gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${isPast || isCurrent ? 'bg-primary text-white' : 'bg-gray-300'}`}>
-                      {cfg.icon}
+          {isTimelineExpanded && (
+            <div className="grid md:grid-cols-2 gap-6 mt-6">
+              {/* Timeline */}
+              <div className="space-y-4">
+                {timeline.map((step, i) => {
+                  const isPast = i < currentIndex;
+                  const isCurrent = i === currentIndex;
+                  const cfg = STATUS_CONFIG[step.status];
+                  return (
+                    <div key={step.status} className="flex gap-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 ${isPast || isCurrent ? 'bg-primary text-white' : 'bg-gray-200'}`}>
+                        {cfg.icon}
+                      </div>
+                      <div className="flex-1 pt-1">
+                        <p className={`font-semibold ${isCurrent ? 'text-primary' : isPast ? 'text-gray-700' : 'text-gray-400'}`}>
+                          {step.label}
+                        </p>
+                        {step.time && (
+                          <p className="text-sm text-gray-500">
+                            {format(new Date(step.time), 'dd/MM à HH:mm')}
+                          </p>
+                        )}
+                        {isCurrent && request.status !== 'completed' && (
+                          <span className="text-sm text-primary font-bold flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                            En cours
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-1 pt-1">
-                      <p className={`font-semibold ${isCurrent ? 'text-primary' : ''}`}>{step.label}</p>
-                      {step.time && <p className="text-sm text-gray-600">{format(new Date(step.time), 'dd/MM à HH:mm')}</p>}
-                      {isCurrent && request.status !== 'completed' && <span className="text-sm text-primary font-bold">En cours</span>}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              {/* Carte */}
+              <div className="h-80 md:h-auto min-h-[320px]">
+                <TransportDetailMap
+                  requestId={request.id}
+                  pickupLat={request.pickupLat}
+                  pickupLng={request.pickupLng}
+                  pickupAddress={request.pickupAddress}
+                  deliveryLat={request.deliveryLat}
+                  deliveryLng={request.deliveryLng}
+                  deliveryAddress={request.deliveryAddress}
+                  status={request.status}
+                  driverId={request.driverId}
+                />
+              </div>
             </div>
           )}
         </div>
