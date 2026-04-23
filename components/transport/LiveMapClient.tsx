@@ -9,7 +9,6 @@ import Map, {
   NavigationControl,
   MapRef,
 } from 'react-map-gl/mapbox';
-import 'mapbox-gl/dist/mapbox-gl.css';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import {

@@ -410,9 +410,9 @@ export default function TransportRequestDetailPage() {
           </div>
 
           {isTimelineExpanded && (
-            <div className="grid md:grid-cols-2 gap-6 mt-6">
-              {/* Timeline */}
-              <div className="space-y-4">
+            <div className="grid md:grid-cols-5 gap-6 mt-6">
+              {/* Timeline — 2/5 */}
+              <div className="md:col-span-2 space-y-4">
                 {timeline.map((step, i) => {
                   const isPast = i < currentIndex;
                   const isCurrent = i === currentIndex;
@@ -443,8 +443,8 @@ export default function TransportRequestDetailPage() {
                 })}
               </div>
 
-              {/* Carte */}
-              <div className="h-80 md:h-auto min-h-[320px]">
+              {/* Carte — 3/5 */}
+              <div className="md:col-span-3 h-80 md:h-auto min-h-[420px]">
                 <TransportDetailMap
                   requestId={request.id}
                   pickupLat={request.pickupLat}

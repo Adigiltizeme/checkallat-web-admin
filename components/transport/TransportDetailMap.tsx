@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Map, { Marker, Popup, Source, Layer, NavigationControl, MapRef } from 'react-map-gl/mapbox';
-import 'mapbox-gl/dist/mapbox-gl.css';
 import { apiClient } from '@/lib/api';
 import { MapPin, RefreshCw } from 'lucide-react';
 
