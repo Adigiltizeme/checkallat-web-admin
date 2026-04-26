@@ -535,6 +535,40 @@ export default function TransportRequestDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Photos de preuve (miniatures cliquables) */}
+          {((request.photosBeforeLoading && request.photosBeforeLoading.length > 0) ||
+            (request.photosAfterDelivery && request.photosAfterDelivery.length > 0)) && (
+            <div className="mt-4 pt-4 border-t">
+              <p className="font-semibold mb-3">📷 Photos de preuve :</p>
+              {request.photosBeforeLoading && request.photosBeforeLoading.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-2">📦 Avant chargement</p>
+                  <div className="flex flex-wrap gap-2">
+                    {request.photosBeforeLoading.map((url: string, i: number) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                        className="block w-14 h-14 rounded-md overflow-hidden border border-gray-200 hover:opacity-80 hover:ring-2 hover:ring-teal-400 transition-all flex-shrink-0">
+                        <img src={url} alt={`Avant ${i + 1}`} className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {request.photosAfterDelivery && request.photosAfterDelivery.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">🏁 Après livraison</p>
+                  <div className="flex flex-wrap gap-2">
+                    {request.photosAfterDelivery.map((url: string, i: number) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                        className="block w-14 h-14 rounded-md overflow-hidden border border-gray-200 hover:opacity-80 hover:ring-2 hover:ring-green-400 transition-all flex-shrink-0">
+                        <img src={url} alt={`Après ${i + 1}`} className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
@@ -638,48 +672,6 @@ export default function TransportRequestDetailPage() {
               <div className="border-l-4 border-green-500 pl-4 py-2 bg-green-50 rounded">
                 <p className="text-sm font-semibold text-green-700 mb-1">🚚 Chauffeur :</p>
                 <p className="text-gray-800">{request.driverCompletionNotes}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Photos de preuve */}
-      {((request.photosBeforeLoading && request.photosBeforeLoading.length > 0) ||
-        (request.photosAfterDelivery && request.photosAfterDelivery.length > 0)) && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">📷 Photos de preuve</h2>
-          <div className="space-y-6">
-            {request.photosBeforeLoading && request.photosBeforeLoading.length > 0 && (
-              <div>
-                <p className="text-sm font-semibold text-gray-600 mb-3">
-                  📦 Avant chargement ({request.photosBeforeLoading.length} photo{request.photosBeforeLoading.length > 1 ? 's' : ''})
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {request.photosBeforeLoading.map((url: string, i: number) => (
-                    <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                      className="block aspect-square rounded-lg overflow-hidden border border-gray-200 hover:opacity-80 transition-opacity">
-                      <img src={url} alt={`Avant chargement ${i + 1}`}
-                        className="w-full h-full object-cover" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-            {request.photosAfterDelivery && request.photosAfterDelivery.length > 0 && (
-              <div>
-                <p className="text-sm font-semibold text-gray-600 mb-3">
-                  🏁 Après livraison ({request.photosAfterDelivery.length} photo{request.photosAfterDelivery.length > 1 ? 's' : ''})
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {request.photosAfterDelivery.map((url: string, i: number) => (
-                    <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                      className="block aspect-square rounded-lg overflow-hidden border border-gray-200 hover:opacity-80 transition-opacity">
-                      <img src={url} alt={`Après livraison ${i + 1}`}
-                        className="w-full h-full object-cover" />
-                    </a>
-                  ))}
-                </div>
               </div>
             )}
           </div>
