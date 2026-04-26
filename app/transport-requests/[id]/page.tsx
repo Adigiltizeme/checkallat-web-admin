@@ -644,6 +644,48 @@ export default function TransportRequestDetailPage() {
         </div>
       )}
 
+      {/* Photos de preuve */}
+      {((request.photosBeforeLoading && request.photosBeforeLoading.length > 0) ||
+        (request.photosAfterDelivery && request.photosAfterDelivery.length > 0)) && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">📷 Photos de preuve</h2>
+          <div className="space-y-6">
+            {request.photosBeforeLoading && request.photosBeforeLoading.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold text-gray-600 mb-3">
+                  📦 Avant chargement ({request.photosBeforeLoading.length} photo{request.photosBeforeLoading.length > 1 ? 's' : ''})
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {request.photosBeforeLoading.map((url: string, i: number) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                      className="block aspect-square rounded-lg overflow-hidden border border-gray-200 hover:opacity-80 transition-opacity">
+                      <img src={url} alt={`Avant chargement ${i + 1}`}
+                        className="w-full h-full object-cover" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            {request.photosAfterDelivery && request.photosAfterDelivery.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold text-gray-600 mb-3">
+                  🏁 Après livraison ({request.photosAfterDelivery.length} photo{request.photosAfterDelivery.length > 1 ? 's' : ''})
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {request.photosAfterDelivery.map((url: string, i: number) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                      className="block aspect-square rounded-lg overflow-hidden border border-gray-200 hover:opacity-80 transition-opacity">
+                      <img src={url} alt={`Après livraison ${i + 1}`}
+                        className="w-full h-full object-cover" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Driver Assignment Modal */}
       {showDriverModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

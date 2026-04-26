@@ -12,6 +12,7 @@ interface PlatformSettings {
   supportEmail: string;
   supportPhone: string;
   exchangeRates: Record<string, number>;
+  commissionRates: Record<string, { standard: number; premium: number }>;
 }
 
 interface SettingsContextType {

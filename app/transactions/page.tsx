@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface Transaction {
   id: string;
@@ -84,6 +85,8 @@ export default function TransactionsPage() {
   const [blockingId, setBlockingId] = useState<string | null>(null);
 
   const { formatCurrency } = useCurrency();
+  const { settings } = useSettings();
+  const transportCommissionRate = settings?.commissionRates?.['moving_transport']?.standard ?? 10;
 
   // ── Fetch transactions ────────────────────────────────────
   useEffect(() => {
@@ -378,7 +381,7 @@ export default function TransactionsPage() {
                 </div>
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-sm font-medium text-gray-500">Taux transport</h3>
-                  <p className="text-2xl font-bold text-gray-900 mt-2">10%</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-2">{transportCommissionRate}%</p>
                   <p className="text-xs text-gray-400 mt-1">Appliqué à chaque paiement cash validé</p>
                 </div>
                 <div className="bg-white rounded-lg shadow p-6 flex flex-col justify-between">
@@ -451,7 +454,7 @@ export default function TransactionsPage() {
                           <table className="min-w-full divide-y divide-gray-100">
                             <thead className="bg-gray-50">
                               <tr>
-                                {['Date', 'Trajet', 'Brut', 'Commission (10%)', 'Net chauffeur'].map(h => (
+                                {['Date', 'Trajet', 'Brut', `Commission (${transportCommissionRate}%)`, 'Net chauffeur'].map(h => (
                                   <th key={h} className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
                                 ))}
                               </tr>
