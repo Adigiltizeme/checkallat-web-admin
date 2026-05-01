@@ -48,7 +48,11 @@ export default function CashCommissionsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, [load]);
 
   const handleCollect = async (driver: DriverCommission) => {
     if (!confirm(

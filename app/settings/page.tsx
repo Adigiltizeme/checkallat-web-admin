@@ -297,6 +297,49 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Frais d'annulation transport */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Frais d'Annulation Transport</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Frais appliqués lorsqu'un client annule sans motif valable alors que le chauffeur est déjà arrivé au point de retrait.
+          </p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="cancellationFeeEnabled"
+                checked={settings.cancellationFeeEnabled ?? true}
+                onChange={(e) => setSettings({ ...settings, cancellationFeeEnabled: e.target.checked })}
+                className="w-4 h-4 accent-primary"
+              />
+              <label htmlFor="cancellationFeeEnabled" className="text-sm font-medium text-gray-700">
+                Activer les frais d'annulation tardive
+              </label>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Taux de frais (% du montant total de la course)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={settings.cancellationFeeRatePct ?? 20}
+                  onChange={(e) => setSettings({ ...settings, cancellationFeeRatePct: Number(e.target.value) })}
+                  disabled={!settings.cancellationFeeEnabled}
+                  className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-400"
+                />
+                <span className="text-gray-500 text-sm">%</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Ex : 20% signifie que le client devra régler 20% du total avant de pouvoir passer une nouvelle commande.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Catégories et zones */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Catégories et Zones</h2>

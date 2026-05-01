@@ -66,6 +66,11 @@ export default function TransportRequestDetailPage() {
   const [refundPct, setRefundPct] = useState(100);
   const [refundNote, setRefundNote] = useState('');
 
+  // Override frais d'annulation
+  const [showFeeModal, setShowFeeModal] = useState(false);
+  const [feeOverrideAmount, setFeeOverrideAmount] = useState<number>(0);
+  const [feeOverridePaid, setFeeOverridePaid] = useState<boolean>(false);
+
   // Driver assignment
   const [showDriverModal, setShowDriverModal] = useState(false);
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -181,13 +186,29 @@ export default function TransportRequestDetailPage() {
     setSelectedDriverId('');
     setDriversLoading(true);
     try {
-      const data: any = await apiClient.get('/admin/drivers', { params: { status: 'active' } });
+      const data: any = await apiClient.get('/admin/drivers', { params: { status: 'active', availableOnly: 'true' } });
       setDrivers(Array.isArray(data) ? data : (data.drivers || []));
     } catch (error) {
       console.error(error);
       setDrivers([]);
     } finally {
       setDriversLoading(false);
+    }
+  };
+
+  const handleFeeOverride = async () => {
+    setUpdating(true);
+    try {
+      await apiClient.patch(`/admin/transport-requests/${requestId}/cancellation-fee`, {
+        cancellationFeeAmount: feeOverrideAmount,
+        cancellationFeePaid: feeOverridePaid,
+      });
+      await loadRequest();
+      setShowFeeModal(false);
+    } catch (error: any) {
+      alert('Erreur: ' + (error.response?.data?.message || 'Erreur inconnue'));
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -478,6 +499,19 @@ export default function TransportRequestDetailPage() {
               <p><strong>Téléphone:</strong> {request.driver.user?.phone}</p>
               <p><strong>Véhicule:</strong> {request.driver.vehicleType}</p>
               <p><strong>Plaque:</strong> {request.driver.vehiclePlate}</p>
+              {request.driver.pendingCashCommission > 0 && (
+                <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <p className="text-sm font-semibold text-orange-800">
+                    💰 Commission cash en attente : {formatCurrency(request.driver.pendingCashCommission)}
+                  </p>
+                  {request.driver.isCashRestricted && (
+                    <p className="text-xs text-red-600 mt-1">⛔ Accès cash restreint</p>
+                  )}
+                </div>
+              )}
+              {request.driver.pendingCashCommission === 0 && (
+                <p className="text-xs text-green-600 mt-2">✅ Commission cash à jour</p>
+              )}
             </>
           ) : (
             <p className="text-gray-500 italic">Non assigné</p>
@@ -678,6 +712,114 @@ export default function TransportRequestDetailPage() {
         </div>
       )}
 
+      {/* Cancellation Info */}
+      {request.status === 'cancelled' && (request.cancelledBy || request.cancellationReason) && (
+        <div className="bg-red-50 border border-red-200 p-6 rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4 text-red-800">❌ Informations d'annulation</h2>
+          <div className="space-y-3">
+            {request.cancelledBy && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-red-700 min-w-[120px]">Annulé par :</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                  request.cancelledBy === 'client' ? 'bg-blue-100 text-blue-800' :
+                  request.cancelledBy === 'driver' ? 'bg-orange-100 text-orange-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {request.cancelledBy === 'client' ? '👤 Client' :
+                   request.cancelledBy === 'driver' ? '🚚 Chauffeur' :
+                   `⚙️ ${request.cancelledBy}`}
+                </span>
+              </div>
+            )}
+            {request.cancellationReason && (
+              <div>
+                <span className="text-sm font-semibold text-red-700 block mb-1">Motif :</span>
+                <div className="bg-white border-l-4 border-red-400 pl-4 py-2 rounded text-sm text-gray-800">
+                  {request.cancellationReason}
+                </div>
+              </div>
+            )}
+            {/* Frais d'annulation tardive */}
+            {request.cancellationFeeAmount > 0 && (
+              <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-orange-800">
+                      💸 Frais d'annulation tardive : {formatCurrency(request.cancellationFeeAmount)}
+                    </p>
+                    <p className="text-xs mt-1">
+                      Statut :{' '}
+                      {request.cancellationFeePaid
+                        ? <span className="text-green-700 font-semibold">✅ Réglé</span>
+                        : <span className="text-red-700 font-semibold">⏳ En attente de règlement</span>}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setFeeOverrideAmount(request.cancellationFeeAmount);
+                      setFeeOverridePaid(request.cancellationFeePaid ?? false);
+                      setShowFeeModal(true);
+                    }}
+                    className="px-3 py-1.5 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
+                  >
+                    Modifier
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal override frais d'annulation */}
+      {showFeeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 space-y-4">
+            <h3 className="text-xl font-bold">Modifier les frais d'annulation</h3>
+            <p className="text-sm text-gray-600">
+              Vous pouvez annuler les frais (mettre à 0), les ajuster, ou les marquer comme réglés manuellement.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Montant des frais</label>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={feeOverrideAmount}
+                onChange={(e) => setFeeOverrideAmount(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-gray-500 mt-1">Mettre à 0 pour annuler les frais.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="feeOverridePaidCheck"
+                checked={feeOverridePaid}
+                onChange={(e) => setFeeOverridePaid(e.target.checked)}
+                className="w-4 h-4 accent-primary"
+              />
+              <label htmlFor="feeOverridePaidCheck" className="text-sm text-gray-700">Marquer comme réglé</label>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleFeeOverride}
+                disabled={updating}
+                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50"
+              >
+                {updating ? 'Enregistrement...' : 'Confirmer'}
+              </button>
+              <button
+                onClick={() => setShowFeeModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Driver Assignment Modal */}
       {showDriverModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -687,7 +829,7 @@ export default function TransportRequestDetailPage() {
             {driversLoading ? (
               <div className="py-8 text-center text-gray-500">Chargement des chauffeurs...</div>
             ) : drivers.length === 0 ? (
-              <div className="py-8 text-center text-gray-500">Aucun chauffeur actif disponible</div>
+              <div className="py-8 text-center text-gray-500">Aucun chauffeur actif et disponible</div>
             ) : (
               <div className="space-y-2 max-h-80 overflow-y-auto mb-4">
                 {drivers.map((driver: any) => (
@@ -708,8 +850,14 @@ export default function TransportRequestDetailPage() {
                       className="accent-green-600"
                     />
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-gray-900 flex items-center gap-2">
                         {driver.user?.firstName} {driver.user?.lastName}
+                        <span className="flex items-center gap-1">
+                          <span className={`w-2 h-2 rounded-full ${driver.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} />
+                          <span className={`text-xs ${driver.isAvailable ? 'text-green-600' : 'text-gray-400'}`}>
+                            {driver.isAvailable ? 'Disponible' : 'Indisponible'}
+                          </span>
+                        </span>
                       </p>
                       <p className="text-sm text-gray-500">
                         {driver.vehicleType} · {driver.vehiclePlate} · {driver.user?.phone}

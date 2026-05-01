@@ -16,6 +16,7 @@ import {
   DollarSign,
   Star,
   MapPin,
+  Headphones,
 } from 'lucide-react';
 
 const MENU_SECTIONS = [
@@ -54,6 +55,12 @@ const MENU_SECTIONS = [
     items: [
       { href: '/reviews', label: 'Avis', icon: Star },
       { href: '/disputes', label: 'Litiges Services', icon: AlertCircle },
+    ],
+  },
+  {
+    title: 'Support',
+    items: [
+      { href: '/support', label: 'Aide & Support', icon: Headphones },
     ],
   },
   {

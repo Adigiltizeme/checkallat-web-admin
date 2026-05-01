@@ -189,6 +189,9 @@ export default function DriversPage() {
                 Statut
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Disponibilité
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Note
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -220,6 +223,14 @@ export default function DriversPage() {
                     }`}
                   >
                     {driver.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="flex items-center gap-1.5">
+                    <span className={`w-2.5 h-2.5 rounded-full ${driver.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} />
+                    <span className={`text-xs font-medium ${driver.isAvailable ? 'text-green-700' : 'text-gray-500'}`}>
+                      {driver.isAvailable ? 'Disponible' : 'Indisponible'}
+                    </span>
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
