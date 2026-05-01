@@ -124,7 +124,7 @@ export default function TransportRequestDetailPage() {
       await apiClient.patch(`/admin/transport-requests/${requestId}/status`, { status: newStatus });
       await loadRequest();
       setShowStatusModal(false);
-      alert('Statut mis à jour');
+      // alert('Statut mis à jour');
     } catch (error: any) {
       alert('Erreur: ' + (error.response?.data?.message || 'Erreur inconnue'));
     } finally {

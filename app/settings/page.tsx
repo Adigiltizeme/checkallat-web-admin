@@ -11,13 +11,7 @@ import { TransportPricingModal } from '@/components/settings/TransportPricingMod
 
 export default function SettingsPage() {
   const { settings: globalSettings, refreshSettings } = useSettings();
-  const [settings, setSettings] = useState({
-    minBookingAmount: 50,
-    maxBookingAmount: 10000,
-    currency: 'EGP',
-    supportEmail: 'support@checkallat.com',
-    supportPhone: '+20 123 456 7890',
-  });
+  const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshingRates, setRefreshingRates] = useState(false);
@@ -34,18 +28,12 @@ export default function SettingsPage() {
     loadTransportPricings();
   }, []);
 
-  useEffect(() => {
-    if (globalSettings) {
-      setSettings(globalSettings);
-    }
-  }, [globalSettings]);
-
   const loadSettings = async () => {
     try {
-      const data = await apiClient.get('/admin/settings');
-      setSettings(data as typeof settings);
-      if ((data as any).updatedAt) {
-        setLastRateUpdate((data as any).updatedAt);
+      const data = await apiClient.get('/admin/settings') as Record<string, any>;
+      setSettings(data);
+      if (data.updatedAt) {
+        setLastRateUpdate(data.updatedAt);
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -148,7 +136,7 @@ export default function SettingsPage() {
               </label>
               <input
                 type="number"
-                value={settings.minBookingAmount}
+                value={settings.minBookingAmount ?? ''}
                 onChange={(e) => setSettings({ ...settings, minBookingAmount: Number(e.target.value) })}
                 className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               />
@@ -160,7 +148,7 @@ export default function SettingsPage() {
               </label>
               <input
                 type="number"
-                value={settings.maxBookingAmount}
+                value={settings.maxBookingAmount ?? ''}
                 onChange={(e) => setSettings({ ...settings, maxBookingAmount: Number(e.target.value) })}
                 className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               />
@@ -171,7 +159,7 @@ export default function SettingsPage() {
                 Devise par défaut (Marché actuel)
               </label>
               <select
-                value={settings.currency}
+                value={settings.currency ?? 'EGP'}
                 onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
                 className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
@@ -289,7 +277,7 @@ export default function SettingsPage() {
               </label>
               <input
                 type="email"
-                value={settings.supportEmail}
+                value={settings.supportEmail ?? ''}
                 onChange={(e) => setSettings({ ...settings, supportEmail: e.target.value })}
                 className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               />
@@ -301,7 +289,7 @@ export default function SettingsPage() {
               </label>
               <input
                 type="tel"
-                value={settings.supportPhone}
+                value={settings.supportPhone ?? ''}
                 onChange={(e) => setSettings({ ...settings, supportPhone: e.target.value })}
                 className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               />
