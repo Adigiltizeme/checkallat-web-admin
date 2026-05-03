@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   Users,
+  UserCheck,
   Truck,
   Store,
   ShoppingCart,
@@ -29,6 +30,7 @@ const MENU_SECTIONS = [
   {
     title: 'Utilisateurs',
     items: [
+      { href: '/clients', label: 'Clients', icon: UserCheck },
       { href: '/pros', label: 'Pros', icon: Users },
       { href: '/drivers', label: 'Chauffeurs', icon: Truck },
       { href: '/sellers', label: 'Vendeurs', icon: Store },
