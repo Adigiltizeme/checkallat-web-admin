@@ -1,7 +1,9 @@
 'use client';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import Map, { Marker, NavigationControl } from 'react-map-gl/mapbox';
 import { MapPin, Navigation, Truck, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -29,80 +31,25 @@ interface TrackingData {
   vehiclePlate: string | null;
 }
 
-// --- Leaflet map component (no iframe) ---
+// --- Mapbox map component ---
 function DriverMap({ lat, lng }: { lat: number; lng: number }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const loadLeaflet = async () => {
-      // Inject CSS once
-      if (!document.getElementById('leaflet-css')) {
-        const link = document.createElement('link');
-        link.id = 'leaflet-css';
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        document.head.appendChild(link);
-      }
-
-      // Load JS if not already loaded
-      if (!(window as any).L) {
-        await new Promise<void>((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-          script.onload = () => resolve();
-          script.onerror = reject;
-          document.head.appendChild(script);
-        });
-      }
-
-      const L = (window as any).L;
-
-      if (mapRef.current) {
-        // Map already exists — just move the marker
-        markerRef.current?.setLatLng([lat, lng]);
-        mapRef.current.setView([lat, lng], mapRef.current.getZoom());
-        return;
-      }
-
-      // Fix default icon paths broken by webpack
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
-
-      const map = L.map(containerRef.current, { zoomControl: true, scrollWheelZoom: false }).setView([lat, lng], 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 19,
-      }).addTo(map);
-
-      const marker = L.marker([lat, lng]).addTo(map);
-      marker.bindPopup('🚛 Position du chauffeur').openPopup();
-
-      mapRef.current = map;
-      markerRef.current = marker;
-    };
-
-    loadLeaflet().catch(console.error);
-
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        markerRef.current = null;
-      }
-    };
-    // Only re-run if lat/lng change meaningfully
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lat, lng]);
-
-  return <div ref={containerRef} style={{ height: 260, width: '100%' }} />;
+  return (
+    <Map
+      mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
+      initialViewState={{ longitude: lng, latitude: lat, zoom: 14 }}
+      longitude={lng}
+      latitude={lat}
+      zoom={14}
+      style={{ width: '100%', height: 260 }}
+      mapStyle="mapbox://styles/mapbox/streets-v12"
+      scrollZoom={false}
+    >
+      <NavigationControl position="top-right" />
+      <Marker longitude={lng} latitude={lat} anchor="bottom">
+        <div className="text-2xl">🚛</div>
+      </Marker>
+    </Map>
+  );
 }
 
 // --- Main page ---
