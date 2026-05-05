@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { MapPin, Navigation, Truck, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 
@@ -29,13 +29,90 @@ interface TrackingData {
   vehiclePlate: string | null;
 }
 
+// --- Leaflet map component (no iframe) ---
+function DriverMap({ lat, lng }: { lat: number; lng: number }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const loadLeaflet = async () => {
+      // Inject CSS once
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+
+      // Load JS if not already loaded
+      if (!(window as any).L) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+          script.onload = () => resolve();
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+
+      const L = (window as any).L;
+
+      if (mapRef.current) {
+        // Map already exists — just move the marker
+        markerRef.current?.setLatLng([lat, lng]);
+        mapRef.current.setView([lat, lng], mapRef.current.getZoom());
+        return;
+      }
+
+      // Fix default icon paths broken by webpack
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+
+      const map = L.map(containerRef.current, { zoomControl: true, scrollWheelZoom: false }).setView([lat, lng], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+      }).addTo(map);
+
+      const marker = L.marker([lat, lng]).addTo(map);
+      marker.bindPopup('🚛 Position du chauffeur').openPopup();
+
+      mapRef.current = map;
+      markerRef.current = marker;
+    };
+
+    loadLeaflet().catch(console.error);
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+    };
+    // Only re-run if lat/lng change meaningfully
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lat, lng]);
+
+  return <div ref={containerRef} style={{ height: 260, width: '100%' }} />;
+}
+
+// --- Main page ---
 export default function PublicTrackingPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<TrackingData | null>(null);
   const [error, setError] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
-  const fetch = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
       const res = await window.fetch(`${API_URL.replace('/api/v1', '')}/api/v1/transport/${id}/public-tracking`);
       if (!res.ok) throw new Error();
@@ -48,10 +125,10 @@ export default function PublicTrackingPage() {
   }, [id]);
 
   useEffect(() => {
-    fetch();
-    const timer = setInterval(fetch, 10000);
+    fetchData();
+    const timer = setInterval(fetchData, 10000);
     return () => clearInterval(timer);
-  }, [fetch]);
+  }, [fetchData]);
 
   const statusInfo = data ? (STATUS_LABELS[data.status] ?? { label: data.status, color: 'bg-gray-100 text-gray-800', icon: null }) : null;
 
@@ -63,7 +140,7 @@ export default function PublicTrackingPage() {
           <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold text-sm">C</div>
           <span className="font-bold text-gray-800">CheckAll@t — Suivi en direct</span>
         </div>
-        <button onClick={fetch} className="text-gray-400 hover:text-teal-500 transition-colors" title="Actualiser">
+        <button onClick={fetchData} className="text-gray-400 hover:text-teal-500 transition-colors" title="Actualiser">
           <RefreshCw size={18} />
         </button>
       </header>
@@ -151,14 +228,7 @@ export default function PublicTrackingPage() {
                   <Navigation size={16} className="text-teal-500" />
                   <span className="text-xs font-bold uppercase tracking-wide text-gray-400">Position du chauffeur</span>
                 </div>
-                <iframe
-                  title="Position chauffeur"
-                  width="100%"
-                  height="240"
-                  loading="lazy"
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${data.driverLng - 0.015},${data.driverLat - 0.015},${data.driverLng + 0.015},${data.driverLat + 0.015}&layer=mapnik&marker=${data.driverLat},${data.driverLng}`}
-                  style={{ border: 0 }}
-                />
+                <DriverMap lat={data.driverLat} lng={data.driverLng} />
               </div>
             ) : (
               <div className="bg-gray-50 rounded-xl p-4 text-center text-sm text-gray-500">
