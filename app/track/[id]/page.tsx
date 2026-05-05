@@ -1,21 +1,24 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import Map, { Marker, NavigationControl } from 'react-map-gl/mapbox';
+import Map, { Marker, Source, Layer, NavigationControl, MapRef } from 'react-map-gl/mapbox';
 import { MapPin, Navigation, Truck, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  pending:          { label: 'En attente de chauffeur', color: 'bg-yellow-100 text-yellow-800', icon: <Clock size={16} /> },
-  accepted:         { label: 'Chauffeur assigné',        color: 'bg-blue-100 text-blue-800',    icon: <Truck size={16} /> },
-  heading_to_pickup:{ label: 'Chauffeur en route',       color: 'bg-indigo-100 text-indigo-800',icon: <Navigation size={16} /> },
-  arrived_at_pickup:{ label: 'Chauffeur arrivé',         color: 'bg-purple-100 text-purple-800',icon: <MapPin size={16} /> },
-  in_transit:       { label: 'En transit',               color: 'bg-teal-100 text-teal-800',    icon: <Truck size={16} /> },
-  completed:        { label: 'Livraison effectuée',      color: 'bg-green-100 text-green-800',  icon: <CheckCircle size={16} /> },
-  cancelled:        { label: 'Annulée',                  color: 'bg-red-100 text-red-800',      icon: <XCircle size={16} /> },
+  pending:           { label: 'En attente de chauffeur', color: 'bg-yellow-100 text-yellow-800', icon: <Clock size={16} /> },
+  accepted:          { label: 'Chauffeur assigné',        color: 'bg-blue-100 text-blue-800',    icon: <Truck size={16} /> },
+  heading_to_pickup: { label: 'Chauffeur en route',       color: 'bg-indigo-100 text-indigo-800',icon: <Navigation size={16} /> },
+  arrived_at_pickup: { label: 'Chauffeur arrivé',         color: 'bg-purple-100 text-purple-800',icon: <MapPin size={16} /> },
+  in_transit:        { label: 'En transit',               color: 'bg-teal-100 text-teal-800',    icon: <Truck size={16} /> },
+  completed:         { label: 'Livraison effectuée',      color: 'bg-green-100 text-green-800',  icon: <CheckCircle size={16} /> },
+  cancelled:         { label: 'Annulée',                  color: 'bg-red-100 text-red-800',      icon: <XCircle size={16} /> },
 };
+
+// Statuses where the driver is actively moving toward a destination
+const MOVING_STATUSES = ['heading_to_pickup', 'arrived_at_pickup', 'loading', 'in_transit', 'arrived_at_delivery', 'unloading'];
 
 interface TrackingData {
   status: string;
@@ -23,6 +26,10 @@ interface TrackingData {
   isImmediate: boolean;
   pickupAddress: string;
   deliveryAddress: string;
+  pickupLat: number | null;
+  pickupLng: number | null;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
   driverLat: number | null;
   driverLng: number | null;
   lastUpdate: string | null;
@@ -31,28 +38,138 @@ interface TrackingData {
   vehiclePlate: string | null;
 }
 
-// --- Mapbox map component ---
-function DriverMap({ lat, lng }: { lat: number; lng: number }) {
+// ─── Dynamic tracking map ──────────────────────────────────────────────────────
+
+function TrackingMap({ data }: { data: TrackingData }) {
+  const mapRef = useRef<MapRef>(null);
+  const prevDriverPos = useRef<{ lat: number; lng: number } | null>(null);
+
+  const hasPickup   = !!(data.pickupLat && data.pickupLng);
+  const hasDelivery = !!(data.deliveryLat && data.deliveryLng);
+  const hasDriver   = !!(data.driverLat && data.driverLng);
+
+  // Route line: pickup → delivery (dashed gray)
+  const routeGeoJson = {
+    type: 'FeatureCollection' as const,
+    features: hasPickup && hasDelivery ? [{
+      type: 'Feature' as const,
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: [
+          [data.pickupLng!, data.pickupLat!],
+          [data.deliveryLng!, data.deliveryLat!],
+        ],
+      },
+      properties: {},
+    }] : [],
+  };
+
+  // Driver path line: driver → next destination (colored)
+  const toPickup = MOVING_STATUSES.slice(0, 3).includes(data.status);
+  const destLat = toPickup ? data.pickupLat : data.deliveryLat;
+  const destLng = toPickup ? data.pickupLng : data.deliveryLng;
+  const driverLineGeoJson = {
+    type: 'FeatureCollection' as const,
+    features: hasDriver && destLat && destLng ? [{
+      type: 'Feature' as const,
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: [
+          [data.driverLng!, data.driverLat!],
+          [destLng, destLat],
+        ],
+      },
+      properties: {},
+    }] : [],
+  };
+
+  // Smoothly fly to driver when position changes
+  useEffect(() => {
+    if (!hasDriver || !mapRef.current) return;
+    const prev = prevDriverPos.current;
+    if (!prev || prev.lat !== data.driverLat || prev.lng !== data.driverLng) {
+      mapRef.current.easeTo({ center: [data.driverLng!, data.driverLat!], duration: 800 });
+      prevDriverPos.current = { lat: data.driverLat!, lng: data.driverLng! };
+    }
+  }, [data.driverLat, data.driverLng, hasDriver]);
+
+  // Initial view: center on driver, or pickup, or delivery
+  const centerLng = data.driverLng ?? data.pickupLng ?? 31.235;
+  const centerLat = data.driverLat ?? data.pickupLat ?? 30.045;
+
   return (
     <Map
+      ref={mapRef}
       mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
-      initialViewState={{ longitude: lng, latitude: lat, zoom: 14 }}
-      longitude={lng}
-      latitude={lat}
-      zoom={14}
-      style={{ width: '100%', height: 260 }}
+      initialViewState={{ longitude: centerLng, latitude: centerLat, zoom: 13 }}
+      style={{ width: '100%', height: '100%' }}
       mapStyle="mapbox://styles/mapbox/streets-v12"
-      scrollZoom={false}
+      scrollZoom={true}
     >
-      <NavigationControl position="top-right" />
-      <Marker longitude={lng} latitude={lat} anchor="bottom">
-        <div className="text-2xl">🚛</div>
-      </Marker>
+      <NavigationControl position="bottom-right" />
+
+      {/* Route: pickup → delivery (dashed gray) */}
+      <Source id="route" type="geojson" data={routeGeoJson}>
+        <Layer
+          id="route-line"
+          type="line"
+          paint={{
+            'line-color': '#CBD5E1',
+            'line-width': 2,
+            'line-dasharray': [4, 4],
+            'line-opacity': 0.8,
+          }}
+        />
+      </Source>
+
+      {/* Driver path → destination (teal) */}
+      <Source id="driver-path" type="geojson" data={driverLineGeoJson}>
+        <Layer
+          id="driver-path-line"
+          type="line"
+          paint={{
+            'line-color': '#0D9488',
+            'line-width': 3,
+            'line-opacity': 0.9,
+          }}
+        />
+      </Source>
+
+      {/* Pickup marker (green P) */}
+      {hasPickup && (
+        <Marker longitude={data.pickupLng!} latitude={data.pickupLat!} anchor="center">
+          <div className="w-7 h-7 bg-green-500 rounded-full border-2 border-white shadow-md flex items-center justify-center">
+            <span className="text-white text-xs font-bold">P</span>
+          </div>
+        </Marker>
+      )}
+
+      {/* Delivery marker (red L) */}
+      {hasDelivery && (
+        <Marker longitude={data.deliveryLng!} latitude={data.deliveryLat!} anchor="center">
+          <div className="w-7 h-7 bg-red-500 rounded-full border-2 border-white shadow-md flex items-center justify-center">
+            <span className="text-white text-xs font-bold">L</span>
+          </div>
+        </Marker>
+      )}
+
+      {/* Driver marker (truck emoji, animated pulse) */}
+      {hasDriver && (
+        <Marker longitude={data.driverLng!} latitude={data.driverLat!} anchor="center">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-teal-400 opacity-40 animate-ping" />
+            <div className="w-10 h-10 rounded-full bg-teal-500 border-2 border-white shadow-lg flex items-center justify-center text-lg relative">
+              🚚
+            </div>
+          </div>
+        </Marker>
+      )}
     </Map>
   );
 }
 
-// --- Main page ---
+// ─── Main page ─────────────────────────────────────────────────────────────────
+
 export default function PublicTrackingPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<TrackingData | null>(null);
@@ -77,12 +194,16 @@ export default function PublicTrackingPage() {
     return () => clearInterval(timer);
   }, [fetchData]);
 
-  const statusInfo = data ? (STATUS_LABELS[data.status] ?? { label: data.status, color: 'bg-gray-100 text-gray-800', icon: null }) : null;
+  const statusInfo = data
+    ? (STATUS_LABELS[data.status] ?? { label: data.status, color: 'bg-gray-100 text-gray-800', icon: null })
+    : null;
+
+  const hasMap = data && (data.driverLat || data.pickupLat);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 to-white flex flex-col">
       {/* Header */}
-      <header className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
+      <header className="bg-white shadow-sm px-4 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold text-sm">C</div>
           <span className="font-bold text-gray-800">CheckAll@t — Suivi en direct</span>
@@ -92,7 +213,14 @@ export default function PublicTrackingPage() {
         </button>
       </header>
 
-      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-6 flex flex-col gap-4">
+      {/* Map — full width, fixed height */}
+      {hasMap && (
+        <div className="w-full flex-shrink-0" style={{ height: 320 }}>
+          <TrackingMap data={data!} />
+        </div>
+      )}
+
+      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-4 flex flex-col gap-4">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center text-red-700 text-sm">
             Impossible de charger le suivi. Vérifiez l'URL ou réessayez.
@@ -168,23 +296,8 @@ export default function PublicTrackingPage() {
               </div>
             )}
 
-            {/* Position GPS */}
-            {data.driverLat && data.driverLng ? (
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="px-4 pt-3 pb-2 flex items-center gap-2">
-                  <Navigation size={16} className="text-teal-500" />
-                  <span className="text-xs font-bold uppercase tracking-wide text-gray-400">Position du chauffeur</span>
-                </div>
-                <DriverMap lat={data.driverLat} lng={data.driverLng} />
-              </div>
-            ) : (
-              <div className="bg-gray-50 rounded-xl p-4 text-center text-sm text-gray-500">
-                Position GPS non disponible pour le moment
-              </div>
-            )}
-
             {/* Dernière mise à jour */}
-            <p className="text-center text-xs text-gray-400">
+            <p className="text-center text-xs text-gray-400 pb-4">
               Mis à jour à {lastRefresh.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} · Actualisation automatique toutes les 10s
             </p>
           </>
