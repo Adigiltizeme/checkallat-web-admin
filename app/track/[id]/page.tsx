@@ -146,15 +146,20 @@ export default function PublicTrackingPage() {
 
             {/* Position GPS */}
             {data.driverLat && data.driverLng ? (
-              <a
-                href={`https://www.google.com/maps?q=${data.driverLat},${data.driverLng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-teal-500 hover:bg-teal-600 text-white rounded-xl p-4 flex items-center justify-center gap-2 font-semibold text-sm transition-colors"
-              >
-                <Navigation size={18} />
-                Voir la position du chauffeur sur Maps
-              </a>
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="px-4 pt-3 pb-2 flex items-center gap-2">
+                  <Navigation size={16} className="text-teal-500" />
+                  <span className="text-xs font-bold uppercase tracking-wide text-gray-400">Position du chauffeur</span>
+                </div>
+                <iframe
+                  title="Position chauffeur"
+                  width="100%"
+                  height="240"
+                  loading="lazy"
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${data.driverLng - 0.015},${data.driverLat - 0.015},${data.driverLng + 0.015},${data.driverLat + 0.015}&layer=mapnik&marker=${data.driverLat},${data.driverLng}`}
+                  style={{ border: 0 }}
+                />
+              </div>
             ) : (
               <div className="bg-gray-50 rounded-xl p-4 text-center text-sm text-gray-500">
                 Position GPS non disponible pour le moment

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Bell, LogOut, User, X } from 'lucide-react';
+import { Bell, LogOut, Menu, X } from 'lucide-react';
 import { getUser, logout } from '@/lib/auth';
 import { apiClient } from '@/lib/api';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 interface Notification {
   id: string;
@@ -14,6 +15,7 @@ interface Notification {
 }
 
 export function Header() {
+  const { toggle } = useSidebar();
   const [user, setUser] = useState<any>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -49,9 +51,17 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
-      <div className="flex-1">
-        <h2 className="text-xl font-semibold text-gray-800">
+    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6">
+      <div className="flex items-center gap-3 flex-1">
+        {/* Hamburger — mobile only */}
+        <button
+          onClick={toggle}
+          className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          title="Menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <h2 className="text-lg md:text-xl font-semibold text-gray-800 truncate">
           Bienvenue, {user?.firstName || 'Admin'}
         </h2>
       </div>

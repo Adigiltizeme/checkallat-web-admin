@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useSidebar } from '@/contexts/SidebarContext';
 import {
   LayoutDashboard,
   Users,
@@ -18,6 +19,8 @@ import {
   Star,
   MapPin,
   Headphones,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 const MENU_SECTIONS = [
@@ -73,23 +76,45 @@ const MENU_SECTIONS = [
   },
 ];
 
-export function Sidebar() {
+function SidebarContent({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
+  const { toggle, closeMobile } = useSidebar();
 
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col h-screen">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-primary">CheckAll@t</h1>
-        <p className="text-sm text-gray-400">Admin Panel</p>
+    <div
+      className={cn(
+        'bg-gray-900 text-white flex flex-col h-full transition-all duration-300',
+        collapsed ? 'w-16' : 'w-64',
+      )}
+    >
+      {/* Logo + toggle button */}
+      <div className={cn('flex items-center h-16 border-b border-gray-800 flex-shrink-0', collapsed ? 'justify-center px-0' : 'justify-between px-4')}>
+        {!collapsed && (
+          <div>
+            <h1 className="text-lg font-bold text-primary leading-tight">CheckAll@t</h1>
+            <p className="text-xs text-gray-400">Admin Panel</p>
+          </div>
+        )}
+        <button
+          onClick={() => { toggle(); closeMobile(); }}
+          className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors flex-shrink-0"
+          title={collapsed ? 'Déployer' : 'Réduire'}
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
       </div>
 
-      <nav className="flex-1 px-4 space-y-4 overflow-y-auto">
+      {/* Nav */}
+      <nav className="flex-1 py-4 space-y-4 overflow-y-auto overflow-x-hidden">
         {MENU_SECTIONS.map((section) => (
           <div key={section.title}>
-            <h3 className="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              {section.title}
-            </h3>
-            <div className="space-y-1">
+            {!collapsed && (
+              <h3 className="px-4 mb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                {section.title}
+              </h3>
+            )}
+            {collapsed && <div className="mx-3 mb-1 border-t border-gray-800" />}
+            <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
@@ -98,15 +123,18 @@ export function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={closeMobile}
+                    title={collapsed ? item.label : undefined}
                     className={cn(
-                      'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm',
+                      'flex items-center gap-3 py-2.5 rounded-lg transition-colors text-sm',
+                      collapsed ? 'justify-center px-0 mx-2' : 'px-4 mx-1',
                       isActive
                         ? 'bg-primary text-white'
                         : 'text-gray-300 hover:bg-gray-800 hover:text-white',
                     )}
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span>{item.label}</span>
+                    {!collapsed && <span className="truncate">{item.label}</span>}
                   </Link>
                 );
               })}
@@ -115,11 +143,42 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-800">
-        <p className="text-xs text-gray-500 text-center">
-          © 2026 CheckAll@t
-        </p>
-      </div>
+      {!collapsed && (
+        <div className="p-4 border-t border-gray-800 flex-shrink-0">
+          <p className="text-xs text-gray-500 text-center">© 2026 CheckAll@t</p>
+        </div>
+      )}
     </div>
+  );
+}
+
+export function Sidebar() {
+  const { collapsed, mobileOpen, closeMobile } = useSidebar();
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <div className="hidden md:flex h-screen flex-shrink-0">
+        <SidebarContent collapsed={collapsed} />
+      </div>
+
+      {/* Mobile overlay backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={closeMobile}
+        />
+      )}
+
+      {/* Mobile sidebar (slide in) */}
+      <div
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 md:hidden transition-transform duration-300',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
+        <SidebarContent collapsed={false} />
+      </div>
+    </>
   );
 }
