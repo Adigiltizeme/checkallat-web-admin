@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = ['/login'];
+const PUBLIC_PREFIXES = ['/track'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -9,6 +10,7 @@ export function middleware(request: NextRequest) {
   // Laisser passer les routes publiques et assets Next.js
   if (
     PUBLIC_PATHS.includes(pathname) ||
+    PUBLIC_PREFIXES.some(p => pathname.startsWith(p)) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
   ) {
