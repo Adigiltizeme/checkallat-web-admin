@@ -212,7 +212,7 @@ export default function DriversPage() {
             {drivers.map((driver: any) => (
               <tr
                 key={driver.id}
-                className={`hover:bg-gray-50 ${driver.status === 'pending' ? 'bg-yellow-50' : ''}`}
+                className={`hover:bg-gray-50 ${driver.status === 'pending' ? 'bg-yellow-50' : driver.status === 'rejected' ? 'bg-red-50' : ''}`}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">
