@@ -7,7 +7,7 @@ import { Modal } from '@/components/ui/Modal';
 import { DriverForm } from '@/components/forms/DriverForm';
 
 export default function DriversPage() {
-  const [drivers, setDrivers] = useState([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [filters, setFilters] = useState({
@@ -125,15 +125,24 @@ export default function DriversPage() {
     }
   };
 
+  const pendingCount = drivers.filter((d) => d.status === 'pending').length;
+
   if (loading) {
-    return <div className="text-center py-12">Chargement...</div>;
+    return <div className="text-center py-12 text-gray-500">Chargement...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestion des Chauffeurs</h1>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            Gestion des Chauffeurs
+            {pendingCount > 0 && (
+              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-sm font-bold bg-yellow-400 text-yellow-900 animate-pulse">
+                {pendingCount} en attente
+              </span>
+            )}
+          </h1>
           <p className="text-gray-600">
             Validation et gestion des chauffeurs de transport
           </p>
@@ -201,7 +210,10 @@ export default function DriversPage() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {drivers.map((driver: any) => (
-              <tr key={driver.id} className="hover:bg-gray-50">
+              <tr
+                key={driver.id}
+                className={`hover:bg-gray-50 ${driver.status === 'pending' ? 'bg-yellow-50' : ''}`}
+              >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">
                     {driver.user?.firstName} {driver.user?.lastName}
@@ -209,8 +221,10 @@ export default function DriversPage() {
                   <div className="text-sm text-gray-500">{driver.user?.phone}</div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900">{driver.vehicleType}</div>
-                  <div className="text-sm text-gray-500">{driver.licensePlate}</div>
+                  <div className="text-sm text-gray-900">
+                    {{ van: 'Camionnette', small_truck: 'Petit camion', large_truck: 'Grand camion' }[driver.vehicleType as string] || driver.vehicleType}
+                  </div>
+                  <div className="text-sm text-gray-500">{driver.vehiclePlate}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
@@ -218,11 +232,17 @@ export default function DriversPage() {
                       driver.status === 'active'
                         ? 'bg-green-100 text-green-800'
                         : driver.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
+                        ? 'bg-yellow-200 text-yellow-900'
+                        : driver.status === 'suspended'
+                        ? 'bg-orange-100 text-orange-800'
                         : 'bg-red-100 text-red-800'
                     }`}
                   >
-                    {driver.status}
+                    {driver.status === 'pending' ? '⏳ En attente'
+                      : driver.status === 'active' ? 'Actif'
+                      : driver.status === 'suspended' ? 'Suspendu'
+                      : driver.status === 'rejected' ? 'Rejeté'
+                      : driver.status}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">

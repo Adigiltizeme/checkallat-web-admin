@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { apiClient } from '@/lib/api';
 import {
   LayoutDashboard,
   Users,
@@ -76,7 +78,7 @@ const MENU_SECTIONS = [
   },
 ];
 
-function SidebarContent({ collapsed }: { collapsed: boolean }) {
+function SidebarContent({ collapsed, pendingDrivers }: { collapsed: boolean; pendingDrivers: number }) {
   const pathname = usePathname();
   const { toggle, closeMobile } = useSidebar();
 
@@ -118,6 +120,7 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+                const badge = item.href === '/drivers' && pendingDrivers > 0 ? pendingDrivers : 0;
 
                 return (
                   <Link
@@ -133,8 +136,20 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
                         : 'text-gray-300 hover:bg-gray-800 hover:text-white',
                     )}
                   >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
+                    <div className="relative flex-shrink-0">
+                      <Icon className="h-4 w-4" />
+                      {badge > 0 && collapsed && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-400 text-[9px] font-bold text-yellow-900">
+                          {badge > 9 ? '9+' : badge}
+                        </span>
+                      )}
+                    </div>
+                    {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+                    {!collapsed && badge > 0 && (
+                      <span className="ml-auto flex-shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-yellow-400 text-yellow-900 text-xs font-bold">
+                        {badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -154,12 +169,57 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
 
 export function Sidebar() {
   const { collapsed, mobileOpen, closeMobile } = useSidebar();
+  const [pendingDrivers, setPendingDrivers] = useState(0);
+  const prevPendingRef = useRef<number | null>(null);
+
+  // Demande la permission de notifications navigateur au montage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchPending = () => {
+      apiClient
+        .get('/admin/drivers', { params: { status: 'pending' } })
+        .then((data: any) => {
+          const list = data.drivers || data;
+          const count: number = Array.isArray(list) ? list.length : 0;
+
+          // Notifie si de nouvelles candidatures arrivent (pas au premier chargement)
+          if (
+            prevPendingRef.current !== null &&
+            count > prevPendingRef.current &&
+            typeof window !== 'undefined' &&
+            'Notification' in window &&
+            Notification.permission === 'granted'
+          ) {
+            const diff = count - prevPendingRef.current;
+            new Notification('CheckAllAt — Nouvelle candidature', {
+              body: diff === 1
+                ? '1 nouvelle candidature chauffeur est en attente de validation.'
+                : `${diff} nouvelles candidatures chauffeur sont en attente de validation.`,
+              icon: '/favicon.ico',
+              tag: 'driver-application',
+            });
+          }
+
+          prevPendingRef.current = count;
+          setPendingDrivers(count);
+        })
+        .catch(() => {});
+    };
+    fetchPending();
+    const interval = setInterval(fetchPending, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <>
       {/* Desktop sidebar */}
       <div className="hidden md:flex h-screen flex-shrink-0">
-        <SidebarContent collapsed={collapsed} />
+        <SidebarContent collapsed={collapsed} pendingDrivers={pendingDrivers} />
       </div>
 
       {/* Mobile overlay backdrop */}
@@ -177,7 +237,7 @@ export function Sidebar() {
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <SidebarContent collapsed={false} />
+        <SidebarContent collapsed={false} pendingDrivers={pendingDrivers} />
       </div>
     </>
   );
