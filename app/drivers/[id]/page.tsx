@@ -378,6 +378,12 @@ export default function DriverDetailPage() {
           <p className="text-sm text-red-700 mb-4">
             Cette candidature a été refusée. Si le candidat a soumis de nouveaux documents, vous pouvez reconsidérer le dossier.
           </p>
+          {driver.rejectionReason && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-200 rounded-md">
+              <p className="text-xs font-semibold text-red-800 uppercase tracking-wide mb-1">Motif du refus</p>
+              <p className="text-sm text-red-900">{driver.rejectionReason}</p>
+            </div>
+          )}
           <button
             onClick={() => handleValidate(true)}
             disabled={processing}
