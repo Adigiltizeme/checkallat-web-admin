@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Map, {
   Marker,
   Popup,
@@ -21,9 +21,12 @@ import {
   Phone,
   Clock,
   Navigation,
+  Briefcase,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+type Sector = 'transport' | 'services';
 
 interface TransportRequest {
   id: string;
@@ -59,6 +62,25 @@ interface TransportRequest {
   };
 }
 
+interface Booking {
+  id: string;
+  status: string;
+  address: string;
+  addressLat?: number | null;
+  addressLng?: number | null;
+  scheduledDate: string;
+  totalPrice: number;
+  category?: { slug: string; nameFr: string; icon?: string };
+  client: { firstName: string; lastName: string; phone: string };
+  pro?: {
+    id: string;
+    companyName?: string;
+    currentLat?: number | null;
+    currentLng?: number | null;
+    user: { firstName: string; lastName: string; phone: string };
+  };
+}
+
 interface TrackingInfo {
   status: string;
   driverLat: number | null;
@@ -69,11 +91,9 @@ interface TrackingInfo {
   estimatedArrival: string | null;
 }
 
-interface SelectedMarker {
-  request: TransportRequest;
-  lng: number;
-  lat: number;
-}
+type SelectedMarker =
+  | { kind: 'transport'; request: TransportRequest; lng: number; lat: number }
+  | { kind: 'booking'; booking: Booking; lng: number; lat: number };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -88,7 +108,15 @@ const STATUS_CONFIG: Record<string, { label: string; hex: string; bg: string; te
   unloading:            { label: 'Déchargement',      hex: '#EC4899', bg: 'bg-pink-100',   text: 'text-pink-800',   icon: '📤' },
 };
 
+const BOOKING_STATUS_CONFIG: Record<string, { label: string; hex: string; bg: string; text: string; icon: string }> = {
+  confirmed:   { label: 'Confirmé',  hex: '#3B82F6', bg: 'bg-blue-100',   text: 'text-blue-800',   icon: '✅' },
+  en_route:    { label: 'En route',  hex: '#6366F1', bg: 'bg-indigo-100', text: 'text-indigo-800', icon: '🔧' },
+  arrived:     { label: 'Arrivé',    hex: '#8B5CF6', bg: 'bg-purple-100', text: 'text-purple-800', icon: '📍' },
+  in_progress: { label: 'En cours',  hex: '#F97316', bg: 'bg-orange-100', text: 'text-orange-800', icon: '⚡' },
+};
+
 const ACTIVE_STATUSES = Object.keys(STATUS_CONFIG);
+const ACTIVE_BOOKING_STATUSES = Object.keys(BOOKING_STATUS_CONFIG);
 const TRACKING_STATUSES = ['heading_to_pickup', 'arrived_at_pickup', 'loading', 'in_transit', 'arrived_at_delivery', 'unloading'];
 
 const INITIAL_VIEW_STATE = { longitude: 31.235, latitude: 30.045, zoom: 10 };
@@ -158,53 +186,73 @@ const buildDriverLineGeoJson = (
 
 export default function LiveMapClient() {
   const mapRef = useRef<MapRef>(null);
+  const fetchRef = useRef<((silent?: boolean) => void) | null>(null);
 
+  const [sector, setSector]           = useState<Sector>('transport');
   const [requests, setRequests]       = useState<TransportRequest[]>([]);
   const [tracking, setTracking]       = useState<Record<string, TrackingInfo>>({});
+  const [bookings, setBookings]       = useState<Booking[]>([]);
   const [selected, setSelected]       = useState<SelectedMarker | null>(null);
   const [loading, setLoading]         = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
   const [lastUpdate, setLastUpdate]   = useState<Date | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(ACTIVE_STATUSES));
+  const [activeFilters, setActiveFilters]              = useState<Set<string>>(new Set(ACTIVE_STATUSES));
+  const [activeBookingFilters, setActiveBookingFilters] = useState<Set<string>>(new Set(ACTIVE_BOOKING_STATUSES));
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
-  const fetchData = useCallback(async (silent = false) => {
-    if (!silent) setRefreshing(true);
-    try {
-      const all = await apiClient.get<TransportRequest[]>('/admin/transport-requests');
-      const active = all.filter(r => ACTIVE_STATUSES.includes(r.status));
-      setRequests(active);
+  useEffect(() => {
+    let cancelled = false;
 
-      // Fetch live GPS only for requests with drivers in motion
-      const needTracking = active.filter(r => r.driverId && TRACKING_STATUSES.includes(r.status));
-      const results = await Promise.allSettled(
-        needTracking.map(r =>
-          apiClient.get<TrackingInfo>(`/transport/${r.id}/tracking`).then(t => ({ id: r.id, t })),
-        ),
-      );
-      const trackMap: Record<string, TrackingInfo> = {};
-      for (const result of results) {
-        if (result.status === 'fulfilled') {
-          trackMap[result.value.id] = result.value.t;
+    const doFetch = async (silent = false) => {
+      if (!silent) setRefreshing(true);
+      try {
+        if (sector === 'transport') {
+          const all = await apiClient.get<TransportRequest[]>('/admin/transport-requests');
+          const active = all.filter(r => ACTIVE_STATUSES.includes(r.status));
+          if (!cancelled) setRequests(active);
+
+          const needTracking = active.filter(r => r.driverId && TRACKING_STATUSES.includes(r.status));
+          const results = await Promise.allSettled(
+            needTracking.map(r =>
+              apiClient.get<TrackingInfo>(`/transport/${r.id}/tracking`).then(t => ({ id: r.id, t })),
+            ),
+          );
+          const trackMap: Record<string, TrackingInfo> = {};
+          for (const result of results) {
+            if (result.status === 'fulfilled') {
+              trackMap[result.value.id] = result.value.t;
+            }
+          }
+          if (!cancelled) setTracking(trackMap);
+        } else {
+          const data = await apiClient.get<any>('/admin/bookings');
+          const list: Booking[] = Array.isArray(data) ? data : (data.bookings ?? []);
+          if (!cancelled) setBookings(list.filter(b => ACTIVE_BOOKING_STATUSES.includes(b.status)));
+        }
+        if (!cancelled) setLastUpdate(new Date());
+      } catch (err) {
+        console.error('LiveMap fetchData error:', err);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setRefreshing(false);
         }
       }
-      setTracking(trackMap);
-      setLastUpdate(new Date());
-    } catch (err) {
-      console.error('LiveMap fetchData error:', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+    };
 
-  useEffect(() => {
-    fetchData(false);
-    const interval = setInterval(() => fetchData(true), 10_000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+    fetchRef.current = doFetch;
+    setLoading(true);
+    setSelected(null);
+    doFetch(false);
+
+    const interval = setInterval(() => doFetch(true), 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [sector]);
 
   // ── Map helpers ────────────────────────────────────────────────────────────
 
@@ -217,15 +265,34 @@ export default function LiveMapClient() {
     }
   };
 
+  const flyToBooking = (b: Booking) => {
+    const lng = b.pro?.currentLng ?? b.addressLng;
+    const lat = b.pro?.currentLat ?? b.addressLat;
+    if (lng && lat && mapRef.current) {
+      mapRef.current.flyTo({ center: [lng, lat], zoom: 14, duration: 800 });
+    }
+  };
+
   const fitAllMarkers = () => {
-    const coords = requests
-      .filter(r => r.pickupLat && r.pickupLng)
-      .flatMap(r => {
-        const pts: [number, number][] = [[r.pickupLng!, r.pickupLat!], [r.deliveryLng!, r.deliveryLat!]];
-        const t = tracking[r.id];
-        if (t?.driverLng && t?.driverLat) pts.push([t.driverLng, t.driverLat]);
+    let coords: [number, number][] = [];
+    if (sector === 'transport') {
+      coords = filteredRequests
+        .filter(r => r.pickupLat && r.pickupLng)
+        .flatMap(r => {
+          const pts: [number, number][] = [[r.pickupLng!, r.pickupLat!]];
+          if (r.deliveryLng && r.deliveryLat) pts.push([r.deliveryLng, r.deliveryLat]);
+          const t = tracking[r.id];
+          if (t?.driverLng && t?.driverLat) pts.push([t.driverLng, t.driverLat]);
+          return pts;
+        });
+    } else {
+      coords = filteredBookings.flatMap(b => {
+        const pts: [number, number][] = [];
+        if (b.addressLng && b.addressLat) pts.push([b.addressLng, b.addressLat]);
+        if (b.pro?.currentLng && b.pro?.currentLat) pts.push([b.pro.currentLng, b.pro.currentLat]);
         return pts;
       });
+    }
     if (coords.length === 0 || !mapRef.current) return;
     const lngs = coords.map(c => c[0]);
     const lats = coords.map(c => c[1]);
@@ -238,18 +305,27 @@ export default function LiveMapClient() {
   const toggleFilter = (status: string) => {
     setActiveFilters(prev => {
       const next = new Set(prev);
-      if (next.has(status)) next.delete(status);
-      else next.add(status);
+      if (next.has(status)) next.delete(status); else next.add(status);
+      return next;
+    });
+  };
+
+  const toggleBookingFilter = (status: string) => {
+    setActiveBookingFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status); else next.add(status);
       return next;
     });
   };
 
   // ── Derived data ───────────────────────────────────────────────────────────
 
-  const filtered = requests.filter(r => activeFilters.has(r.status));
-  const inTransitCount = requests.filter(r => r.status === 'in_transit').length;
-  const routeGeoJson = buildRouteGeoJson(filtered);
-  const driverLineGeoJson = buildDriverLineGeoJson(filtered, tracking);
+  const filteredRequests = requests.filter(r => activeFilters.has(r.status));
+  const filteredBookings = bookings.filter(b => activeBookingFilters.has(b.status));
+  const inTransitCount   = requests.filter(r => r.status === 'in_transit').length;
+  const inProgressCount  = bookings.filter(b => b.status === 'in_progress').length;
+  const routeGeoJson     = buildRouteGeoJson(filteredRequests);
+  const driverLineGeoJson = buildDriverLineGeoJson(filteredRequests, tracking);
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -272,137 +348,233 @@ export default function LiveMapClient() {
           sidebarOpen ? 'w-80' : 'w-0'
         } transition-all duration-300 bg-white border-r border-gray-200 flex flex-col overflow-hidden flex-shrink-0 z-10`}
       >
-        {/* Panel Header */}
+        {/* Panel Header + Sector Tabs */}
         <div className="p-4 border-b border-gray-200 bg-gray-900 text-white flex-shrink-0">
           <div className="flex items-center justify-between mb-1">
             <h2 className="font-bold text-lg">Suivi en temps réel</h2>
             <span className="text-xs bg-teal-500 text-white px-2 py-0.5 rounded-full font-semibold">
-              {requests.length} actives
+              {sector === 'transport' ? requests.length : bookings.length} actives
             </span>
           </div>
           <p className="text-xs text-gray-400">
-            {inTransitCount} en transit · Actualisation 10s
+            {sector === 'transport'
+              ? `${inTransitCount} en transit · Actualisation 10s`
+              : `${inProgressCount} en cours · Actualisation 10s`}
           </p>
+          <div className="flex gap-1 mt-3">
+            {(['transport', 'services'] as Sector[]).map(s => (
+              <button
+                key={s}
+                onClick={() => setSector(s)}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                  sector === s
+                    ? 'bg-teal-500 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                }`}
+              >
+                {s === 'transport' ? '🚚 Transport' : '🔧 Services'}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Status Filters */}
         <div className="p-3 border-b border-gray-100 flex-shrink-0">
           <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Filtres statut</p>
           <div className="flex flex-wrap gap-1.5">
-            {ACTIVE_STATUSES.map(s => {
-              const cfg = STATUS_CONFIG[s];
-              const on = activeFilters.has(s);
-              return (
-                <button
-                  key={s}
-                  onClick={() => toggleFilter(s)}
-                  className={`text-xs px-2 py-1 rounded-full border transition-all ${
-                    on
-                      ? `${cfg.bg} ${cfg.text} border-transparent font-semibold`
-                      : 'bg-white text-gray-400 border-gray-200'
-                  }`}
-                >
-                  {cfg.icon} {cfg.label}
-                </button>
-              );
-            })}
+            {sector === 'transport'
+              ? ACTIVE_STATUSES.map(s => {
+                  const cfg = STATUS_CONFIG[s];
+                  const on = activeFilters.has(s);
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => toggleFilter(s)}
+                      className={`text-xs px-2 py-1 rounded-full border transition-all ${
+                        on
+                          ? `${cfg.bg} ${cfg.text} border-transparent font-semibold`
+                          : 'bg-white text-gray-400 border-gray-200'
+                      }`}
+                    >
+                      {cfg.icon} {cfg.label}
+                    </button>
+                  );
+                })
+              : ACTIVE_BOOKING_STATUSES.map(s => {
+                  const cfg = BOOKING_STATUS_CONFIG[s];
+                  const on = activeBookingFilters.has(s);
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => toggleBookingFilter(s)}
+                      className={`text-xs px-2 py-1 rounded-full border transition-all ${
+                        on
+                          ? `${cfg.bg} ${cfg.text} border-transparent font-semibold`
+                          : 'bg-white text-gray-400 border-gray-200'
+                      }`}
+                    >
+                      {cfg.icon} {cfg.label}
+                    </button>
+                  );
+                })}
           </div>
         </div>
 
-        {/* Request List */}
+        {/* List */}
         <div className="flex-1 overflow-y-auto">
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 p-6">
-              <Truck className="h-12 w-12 mb-3 opacity-30" />
-              <p className="text-sm text-center">Aucune livraison active avec ces filtres</p>
-            </div>
-          ) : (
-            filtered.map(r => {
-              const cfg = STATUS_CONFIG[r.status];
-              const track = tracking[r.id];
-              const hasGps = !!(track?.driverLat && track?.driverLng);
-              return (
-                <div
-                  key={r.id}
-                  className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => {
-                    flyToRequest(r);
-                    setSelected({
-                      request: r,
-                      lng: track?.driverLng ?? r.pickupLng ?? 0,
-                      lat: track?.driverLat ?? r.pickupLat ?? 0,
-                    });
-                  }}
-                >
-                  {/* Status + GPS indicator */}
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cfg?.bg} ${cfg?.text}`}>
-                      {cfg?.icon} {cfg?.label}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      {hasGps && (
-                        <span className="flex items-center gap-1 text-xs text-green-600">
-                          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                          GPS
-                        </span>
-                      )}
-                      <Link
-                        href={`/transport-requests/${r.id}`}
-                        className="text-teal-600 hover:text-teal-800"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Link>
+          {sector === 'transport' ? (
+            filteredRequests.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 p-6">
+                <Truck className="h-12 w-12 mb-3 opacity-30" />
+                <p className="text-sm text-center">Aucune livraison active avec ces filtres</p>
+              </div>
+            ) : (
+              filteredRequests.map(r => {
+                const cfg = STATUS_CONFIG[r.status];
+                const track = tracking[r.id];
+                const hasGps = !!(track?.driverLat && track?.driverLng);
+                return (
+                  <div
+                    key={r.id}
+                    className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      flyToRequest(r);
+                      setSelected({
+                        kind: 'transport',
+                        request: r,
+                        lng: track?.driverLng ?? r.pickupLng ?? 0,
+                        lat: track?.driverLat ?? r.pickupLat ?? 0,
+                      });
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cfg?.bg} ${cfg?.text}`}>
+                        {cfg?.icon} {cfg?.label}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {hasGps && (
+                          <span className="flex items-center gap-1 text-xs text-green-600">
+                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            GPS
+                          </span>
+                        )}
+                        <Link
+                          href={`/transport-requests/${r.id}`}
+                          className="text-teal-600 hover:text-teal-800"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {r.client.firstName} {r.client.lastName}
+                    </p>
+                    {r.driver && (
+                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <Truck className="h-3 w-3" />
+                        {r.driver.user.firstName} {r.driver.user.lastName} · {VEHICLE_LABELS[r.driver.vehicleType] ?? r.driver.vehicleType}
+                      </p>
+                    )}
+                    <div className="mt-1.5 space-y-0.5">
+                      <p className="text-xs text-gray-600 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                        {truncate(r.pickupAddress, 32)}
+                      </p>
+                      <p className="text-xs text-gray-600 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+                        {truncate(r.deliveryAddress, 32)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-xs font-semibold text-teal-700">
+                        {Number(r.totalPrice).toLocaleString('fr-FR')} EGP
+                      </span>
+                      <span className="text-xs text-gray-400">{r.distance?.toFixed(1)} km</span>
                     </div>
                   </div>
-
-                  {/* Client */}
-                  <p className="text-sm font-semibold text-gray-900">
-                    {r.client.firstName} {r.client.lastName}
-                  </p>
-
-                  {/* Driver */}
-                  {r.driver && (
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                      <Truck className="h-3 w-3" />
-                      {r.driver.user.firstName} {r.driver.user.lastName} · {VEHICLE_LABELS[r.driver.vehicleType] ?? r.driver.vehicleType}
+                );
+              })
+            )
+          ) : (
+            filteredBookings.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 p-6">
+                <Briefcase className="h-12 w-12 mb-3 opacity-30" />
+                <p className="text-sm text-center">Aucune intervention active avec ces filtres</p>
+              </div>
+            ) : (
+              filteredBookings.map(b => {
+                const cfg = BOOKING_STATUS_CONFIG[b.status];
+                const hasLocation = !!(b.pro?.currentLat && b.pro?.currentLng);
+                return (
+                  <div
+                    key={b.id}
+                    className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      flyToBooking(b);
+                      setSelected({
+                        kind: 'booking',
+                        booking: b,
+                        lng: b.pro?.currentLng ?? b.addressLng ?? 0,
+                        lat: b.pro?.currentLat ?? b.addressLat ?? 0,
+                      });
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cfg?.bg ?? 'bg-gray-100'} ${cfg?.text ?? 'text-gray-600'}`}>
+                        {cfg?.icon} {cfg?.label ?? b.status}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {hasLocation && (
+                          <span className="flex items-center gap-1 text-xs text-green-600">
+                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            GPS
+                          </span>
+                        )}
+                        <Link
+                          href={`/bookings/${b.id}`}
+                          className="text-teal-600 hover:text-teal-800"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {b.client.firstName} {b.client.lastName}
                     </p>
-                  )}
-
-                  {/* Route */}
-                  <div className="mt-1.5 space-y-0.5">
-                    <p className="text-xs text-gray-600 flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                      {truncate(r.pickupAddress, 32)}
+                    {b.pro && (
+                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <Briefcase className="h-3 w-3" />
+                        {b.pro.companyName || `${b.pro.user.firstName} ${b.pro.user.lastName}`}
+                        {b.category && ` · ${b.category.icon ?? ''} ${b.category.nameFr}`}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-600 flex items-center gap-1 mt-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                      {truncate(b.address, 36)}
                     </p>
-                    <p className="text-xs text-gray-600 flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
-                      {truncate(r.deliveryAddress, 32)}
-                    </p>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-xs font-semibold text-teal-700">
+                        {Number(b.totalPrice).toLocaleString('fr-FR')} EGP
+                      </span>
+                    </div>
                   </div>
-
-                  {/* Price + distance */}
-                  <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-xs font-semibold text-teal-700">
-                      {Number(r.totalPrice).toLocaleString('fr-FR')} EGP
-                    </span>
-                    <span className="text-xs text-gray-400">{r.distance?.toFixed(1)} km</span>
-                  </div>
-                </div>
-              );
-            })
+                );
+              })
+            )
           )}
         </div>
 
-        {/* Fit all button */}
-        {filtered.length > 0 && (
+        {/* Fit all / overview button */}
+        {(sector === 'transport' ? filteredRequests : filteredBookings).length > 0 && (
           <div className="p-3 border-t border-gray-200 flex-shrink-0">
             <button
               onClick={fitAllMarkers}
               className="w-full flex items-center justify-center gap-2 text-sm bg-teal-50 text-teal-700 hover:bg-teal-100 py-2 rounded-lg transition-colors font-medium"
             >
               <Navigation className="h-4 w-4" />
-              Vue d'ensemble de la flotte
+              {sector === 'transport' ? "Vue d'ensemble de la flotte" : "Vue d'ensemble des interventions"}
             </button>
           </div>
         )}
@@ -425,20 +597,35 @@ export default function LiveMapClient() {
         {/* Top Stats Bar */}
         <div className="absolute top-3 left-14 right-3 z-20 bg-white/95 backdrop-blur-sm rounded-xl shadow-md px-4 py-2.5 flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
-            <Truck className="h-4 w-4 text-teal-600" />
-            <span>{requests.length} livraisons actives</span>
+            {sector === 'transport' ? (
+              <><Truck className="h-4 w-4 text-teal-600" /><span>{requests.length} livraisons actives</span></>
+            ) : (
+              <><Briefcase className="h-4 w-4 text-teal-600" /><span>{bookings.length} interventions actives</span></>
+            )}
           </div>
           <div className="h-4 w-px bg-gray-200" />
-          {ACTIVE_STATUSES.slice(2, 7).map(s => {
-            const count = requests.filter(r => r.status === s).length;
-            if (!count) return null;
-            const cfg = STATUS_CONFIG[s];
-            return (
-              <span key={s} className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cfg.bg} ${cfg.text}`}>
-                {cfg.icon} {count}
-              </span>
-            );
-          })}
+          {sector === 'transport'
+            ? ACTIVE_STATUSES.slice(2, 7).map(s => {
+                const count = requests.filter(r => r.status === s).length;
+                if (!count) return null;
+                const cfg = STATUS_CONFIG[s];
+                return (
+                  <span key={s} className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cfg.bg} ${cfg.text}`}>
+                    {cfg.icon} {count}
+                  </span>
+                );
+              })
+            : ACTIVE_BOOKING_STATUSES.map(s => {
+                const count = bookings.filter(b => b.status === s).length;
+                if (!count) return null;
+                const cfg = BOOKING_STATUS_CONFIG[s];
+                return (
+                  <span key={s} className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cfg.bg} ${cfg.text}`}>
+                    {cfg.icon} {count}
+                  </span>
+                );
+              })
+          }
           <div className="ml-auto flex items-center gap-3">
             {lastUpdate && (
               <span className="text-xs text-gray-400 flex items-center gap-1">
@@ -447,7 +634,7 @@ export default function LiveMapClient() {
               </span>
             )}
             <button
-              onClick={() => fetchData(false)}
+              onClick={() => fetchRef.current?.(false)}
               disabled={refreshing}
               className="flex items-center gap-1.5 text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
             >
@@ -468,101 +655,158 @@ export default function LiveMapClient() {
         >
           <NavigationControl position="bottom-right" />
 
-          {/* ── Route lines (pickup → delivery, dashed gray) */}
-          <Source id="routes" type="geojson" data={routeGeoJson}>
-            <Layer
-              id="route-lines"
-              type="line"
-              paint={{
-                'line-color': '#CBD5E1',
-                'line-width': 2,
-                'line-dasharray': [4, 4],
-                'line-opacity': 0.8,
-              }}
-            />
-          </Source>
-
-          {/* ── Driver path lines (driver → destination, colored) */}
-          <Source id="driver-lines" type="geojson" data={driverLineGeoJson}>
-            <Layer
-              id="driver-path-lines"
-              type="line"
-              paint={{
-                'line-color': ['get', 'hex'],
-                'line-width': 3,
-                'line-opacity': 0.9,
-              }}
-            />
-          </Source>
-
-          {/* ── Pickup markers (green P) */}
-          {filtered
-            .filter(r => r.pickupLat && r.pickupLng)
-            .map(r => (
-              <Marker
-                key={`pickup-${r.id}`}
-                longitude={r.pickupLng!}
-                latitude={r.pickupLat!}
-                anchor="center"
-                onClick={e => {
-                  e.originalEvent.stopPropagation();
-                  setSelected({ request: r, lng: r.pickupLng!, lat: r.pickupLat! });
-                }}
-              >
-                <div className="w-7 h-7 bg-green-500 rounded-full border-2 border-white shadow-md flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
-                  <span className="text-white text-xs font-bold">P</span>
-                </div>
-              </Marker>
-            ))}
-
-          {/* ── Delivery markers (red L) */}
-          {filtered
-            .filter(r => r.deliveryLat && r.deliveryLng)
-            .map(r => (
-              <Marker
-                key={`delivery-${r.id}`}
-                longitude={r.deliveryLng!}
-                latitude={r.deliveryLat!}
-                anchor="center"
-                onClick={e => {
-                  e.originalEvent.stopPropagation();
-                  setSelected({ request: r, lng: r.deliveryLng!, lat: r.deliveryLat! });
-                }}
-              >
-                <div className="w-7 h-7 bg-red-500 rounded-full border-2 border-white shadow-md flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
-                  <span className="text-white text-xs font-bold">L</span>
-                </div>
-              </Marker>
-            ))}
-
-          {/* ── Driver markers (truck, status-colored) */}
-          {filtered
-            .filter(r => r.driverId && tracking[r.id]?.driverLat && tracking[r.id]?.driverLng)
-            .map(r => {
-              const track = tracking[r.id];
-              const hex = STATUS_CONFIG[r.status]?.hex ?? '#888';
-              return (
-                <Marker
-                  key={`driver-${r.id}`}
-                  longitude={track.driverLng!}
-                  latitude={track.driverLat!}
-                  anchor="center"
-                  onClick={e => {
-                    e.originalEvent.stopPropagation();
-                    setSelected({ request: r, lng: track.driverLng!, lat: track.driverLat! });
+          {/* ── Transport sector layers ── */}
+          {sector === 'transport' && (
+            <>
+              <Source id="routes" type="geojson" data={routeGeoJson}>
+                <Layer
+                  id="route-lines"
+                  type="line"
+                  paint={{
+                    'line-color': '#CBD5E1',
+                    'line-width': 2,
+                    'line-dasharray': [4, 4],
+                    'line-opacity': 0.8,
                   }}
-                >
-                  <div
-                    className="w-10 h-10 rounded-full border-3 border-white shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform text-lg"
-                    style={{ backgroundColor: hex, borderWidth: 3, borderColor: 'white' }}
-                  >
-                    🚚
-                  </div>
-                </Marker>
-              );
-            })}
+                />
+              </Source>
 
-          {/* ── Popup */}
+              <Source id="driver-lines" type="geojson" data={driverLineGeoJson}>
+                <Layer
+                  id="driver-path-lines"
+                  type="line"
+                  paint={{
+                    'line-color': ['get', 'hex'],
+                    'line-width': 3,
+                    'line-opacity': 0.9,
+                  }}
+                />
+              </Source>
+
+              {filteredRequests
+                .filter(r => r.pickupLat && r.pickupLng)
+                .map(r => (
+                  <Marker
+                    key={`pickup-${r.id}`}
+                    longitude={r.pickupLng!}
+                    latitude={r.pickupLat!}
+                    anchor="center"
+                    onClick={e => {
+                      e.originalEvent.stopPropagation();
+                      setSelected({ kind: 'transport', request: r, lng: r.pickupLng!, lat: r.pickupLat! });
+                    }}
+                  >
+                    <div className="w-7 h-7 bg-green-500 rounded-full border-2 border-white shadow-md flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
+                      <span className="text-white text-xs font-bold">P</span>
+                    </div>
+                  </Marker>
+                ))}
+
+              {filteredRequests
+                .filter(r => r.deliveryLat && r.deliveryLng)
+                .map(r => (
+                  <Marker
+                    key={`delivery-${r.id}`}
+                    longitude={r.deliveryLng!}
+                    latitude={r.deliveryLat!}
+                    anchor="center"
+                    onClick={e => {
+                      e.originalEvent.stopPropagation();
+                      setSelected({ kind: 'transport', request: r, lng: r.deliveryLng!, lat: r.deliveryLat! });
+                    }}
+                  >
+                    <div className="w-7 h-7 bg-red-500 rounded-full border-2 border-white shadow-md flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
+                      <span className="text-white text-xs font-bold">L</span>
+                    </div>
+                  </Marker>
+                ))}
+
+              {filteredRequests
+                .filter(r => r.driverId && tracking[r.id]?.driverLat && tracking[r.id]?.driverLng)
+                .map(r => {
+                  const track = tracking[r.id];
+                  const hex = STATUS_CONFIG[r.status]?.hex ?? '#888';
+                  return (
+                    <Marker
+                      key={`driver-${r.id}`}
+                      longitude={track.driverLng!}
+                      latitude={track.driverLat!}
+                      anchor="center"
+                      onClick={e => {
+                        e.originalEvent.stopPropagation();
+                        setSelected({ kind: 'transport', request: r, lng: track.driverLng!, lat: track.driverLat! });
+                      }}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-full shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform text-lg"
+                        style={{ backgroundColor: hex, border: '3px solid white' }}
+                      >
+                        🚚
+                      </div>
+                    </Marker>
+                  );
+                })}
+            </>
+          )}
+
+          {/* ── Services sector markers ── */}
+          {sector === 'services' && (
+            <>
+              {/* Booking address pins (status-colored) */}
+              {filteredBookings
+                .filter(b => b.addressLat && b.addressLng)
+                .map(b => {
+                  const hex = BOOKING_STATUS_CONFIG[b.status]?.hex ?? '#3B82F6';
+                  return (
+                    <Marker
+                      key={`addr-${b.id}`}
+                      longitude={b.addressLng!}
+                      latitude={b.addressLat!}
+                      anchor="center"
+                      onClick={e => {
+                        e.originalEvent.stopPropagation();
+                        setSelected({ kind: 'booking', booking: b, lng: b.addressLng!, lat: b.addressLat! });
+                      }}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full border-2 border-white shadow-md flex items-center justify-center cursor-pointer hover:scale-110 transition-transform text-sm"
+                        style={{ backgroundColor: hex }}
+                      >
+                        📍
+                      </div>
+                    </Marker>
+                  );
+                })}
+
+              {/* Pro location markers */}
+              {filteredBookings
+                .filter(b => b.pro?.currentLat && b.pro?.currentLng)
+                .map(b => {
+                  const hex = BOOKING_STATUS_CONFIG[b.status]?.hex ?? '#F97316';
+                  return (
+                    <Marker
+                      key={`pro-${b.id}`}
+                      longitude={b.pro!.currentLng!}
+                      latitude={b.pro!.currentLat!}
+                      anchor="center"
+                      onClick={e => {
+                        e.originalEvent.stopPropagation();
+                        setSelected({ kind: 'booking', booking: b, lng: b.pro!.currentLng!, lat: b.pro!.currentLat! });
+                      }}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-full shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform text-lg"
+                        style={{ backgroundColor: hex, border: '3px solid white' }}
+                      >
+                        🔧
+                      </div>
+                    </Marker>
+                  );
+                })}
+            </>
+          )}
+
+          {/* ── Popup ── */}
           {selected && (
             <Popup
               longitude={selected.lng}
@@ -572,21 +816,35 @@ export default function LiveMapClient() {
               maxWidth="300px"
               closeOnClick={false}
             >
-              <PopupContent
-                request={selected.request}
-                tracking={tracking[selected.request.id]}
-              />
+              {selected.kind === 'transport' ? (
+                <TransportPopupContent
+                  request={selected.request}
+                  tracking={tracking[selected.request.id]}
+                />
+              ) : (
+                <BookingPopupContent booking={selected.booking} />
+              )}
             </Popup>
           )}
         </Map>
 
         {/* Empty state overlay */}
-        {requests.length === 0 && (
+        {((sector === 'transport' && requests.length === 0) ||
+          (sector === 'services' && bookings.length === 0)) && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow-xl px-8 py-6 text-center max-w-xs">
-              <Truck className="h-14 w-14 mx-auto text-gray-300 mb-3" />
-              <h3 className="font-bold text-gray-700 text-lg mb-1">Aucune livraison active</h3>
-              <p className="text-sm text-gray-500">Les livraisons en cours apparaîtront ici automatiquement.</p>
+              {sector === 'transport'
+                ? <Truck className="h-14 w-14 mx-auto text-gray-300 mb-3" />
+                : <Briefcase className="h-14 w-14 mx-auto text-gray-300 mb-3" />
+              }
+              <h3 className="font-bold text-gray-700 text-lg mb-1">
+                {sector === 'transport' ? 'Aucune livraison active' : 'Aucune intervention active'}
+              </h3>
+              <p className="text-sm text-gray-500">
+                {sector === 'transport'
+                  ? 'Les livraisons en cours apparaîtront ici automatiquement.'
+                  : 'Les interventions de prestataires apparaîtront ici automatiquement.'}
+              </p>
             </div>
           </div>
         )}
@@ -595,9 +853,9 @@ export default function LiveMapClient() {
   );
 }
 
-// ─── Popup Content ─────────────────────────────────────────────────────────
+// ─── Transport Popup ───────────────────────────────────────────────────────────
 
-function PopupContent({
+function TransportPopupContent({
   request: r,
   tracking: track,
 }: {
@@ -609,7 +867,6 @@ function PopupContent({
 
   return (
     <div className="text-sm min-w-[260px]">
-      {/* Status */}
       <div className={`flex items-center gap-2 px-3 py-2 rounded-t-lg mb-2 ${cfg?.bg} ${cfg?.text}`}>
         <span className="text-base">{cfg?.icon}</span>
         <span className="font-bold">{cfg?.label}</span>
@@ -622,7 +879,6 @@ function PopupContent({
       </div>
 
       <div className="px-1 space-y-2">
-        {/* Client */}
         <div>
           <p className="text-xs text-gray-500 font-semibold uppercase">Client</p>
           <p className="font-semibold text-gray-800">{r.client.firstName} {r.client.lastName}</p>
@@ -631,7 +887,6 @@ function PopupContent({
           </p>
         </div>
 
-        {/* Driver */}
         {r.driver && (
           <div>
             <p className="text-xs text-gray-500 font-semibold uppercase">Chauffeur</p>
@@ -648,7 +903,6 @@ function PopupContent({
           </div>
         )}
 
-        {/* Route */}
         <div>
           <p className="text-xs text-gray-500 font-semibold uppercase">Itinéraire</p>
           <div className="space-y-1 mt-1">
@@ -663,7 +917,6 @@ function PopupContent({
           </div>
         </div>
 
-        {/* GPS update */}
         {track?.lastUpdate && (
           <p className="text-xs text-gray-400 flex items-center gap-1">
             <MapPin className="h-3 w-3" />
@@ -671,15 +924,81 @@ function PopupContent({
           </p>
         )}
 
-        {/* Price + distance */}
         <div className="flex items-center justify-between pt-1 border-t border-gray-100">
           <span className="font-bold text-teal-700">{Number(r.totalPrice).toLocaleString('fr-FR')} EGP</span>
           <span className="text-xs text-gray-400">{r.distance?.toFixed(1)} km</span>
         </div>
 
-        {/* Detail link */}
         <Link
           href={`/transport-requests/${r.id}`}
+          className="flex items-center justify-center gap-2 w-full bg-gray-900 text-white text-xs py-2 rounded-lg hover:bg-gray-800 transition-colors mt-1"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Voir les détails complets
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ─── Booking Popup ─────────────────────────────────────────────────────────────
+
+function BookingPopupContent({ booking: b }: { booking: Booking }) {
+  const cfg = BOOKING_STATUS_CONFIG[b.status];
+
+  return (
+    <div className="text-sm min-w-[260px]">
+      <div className={`flex items-center gap-2 px-3 py-2 rounded-t-lg mb-2 ${cfg?.bg ?? 'bg-gray-100'} ${cfg?.text ?? 'text-gray-600'}`}>
+        <span className="text-base">{cfg?.icon}</span>
+        <span className="font-bold">{cfg?.label ?? b.status}</span>
+        {b.category && (
+          <span className="ml-auto text-xs opacity-80">
+            {b.category.icon ?? ''} {b.category.nameFr}
+          </span>
+        )}
+      </div>
+
+      <div className="px-1 space-y-2">
+        <div>
+          <p className="text-xs text-gray-500 font-semibold uppercase">Client</p>
+          <p className="font-semibold text-gray-800">{b.client.firstName} {b.client.lastName}</p>
+          <p className="text-xs text-gray-500 flex items-center gap-1">
+            <Phone className="h-3 w-3" /> {b.client.phone}
+          </p>
+        </div>
+
+        {b.pro && (
+          <div>
+            <p className="text-xs text-gray-500 font-semibold uppercase">Prestataire</p>
+            <p className="font-semibold text-gray-800">
+              {b.pro.companyName || `${b.pro.user.firstName} ${b.pro.user.lastName}`}
+            </p>
+            <p className="text-xs text-gray-500 flex items-center gap-1">
+              <Phone className="h-3 w-3" /> {b.pro.user.phone}
+            </p>
+            {b.pro.currentLat && b.pro.currentLng && (
+              <p className="text-xs text-green-600 flex items-center gap-1 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                Position GPS active
+              </p>
+            )}
+          </div>
+        )}
+
+        <div>
+          <p className="text-xs text-gray-500 font-semibold uppercase">Adresse d'intervention</p>
+          <div className="flex items-start gap-2 mt-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-gray-700">{b.address}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+          <span className="font-bold text-teal-700">{Number(b.totalPrice).toLocaleString('fr-FR')} EGP</span>
+        </div>
+
+        <Link
+          href={`/bookings/${b.id}`}
           className="flex items-center justify-center gap-2 w-full bg-gray-900 text-white text-xs py-2 rounded-lg hover:bg-gray-800 transition-colors mt-1"
         >
           <ExternalLink className="h-3.5 w-3.5" />

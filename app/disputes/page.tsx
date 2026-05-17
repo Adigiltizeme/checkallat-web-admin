@@ -5,18 +5,29 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 
+const SECTOR_TABS = [
+  { key: 'all',       label: 'Tous',        type: undefined },
+  { key: 'transport', label: '🚚 Transport', type: 'transport' },
+  { key: 'services',  label: '🔧 Services',  type: 'booking' },
+];
+
 export default function DisputesPage() {
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [sectorTab, setSectorTab] = useState('all');
 
   useEffect(() => {
-    const params = filter !== 'all' ? { status: filter } : {};
+    setLoading(true);
+    const params: any = {};
+    if (filter !== 'all') params.status = filter;
+    const sectorType = SECTOR_TABS.find(t => t.key === sectorTab)?.type;
+    if (sectorType) params.type = sectorType;
     apiClient.get('/admin/disputes', { params })
       .then((data: any) => setDisputes(data.disputes || data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [filter]);
+  }, [filter, sectorTab]);
 
   if (loading) {
     return <div className="text-center py-12">Chargement...</div>;
@@ -29,9 +40,25 @@ export default function DisputesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Gestion des Litiges</h1>
-        <p className="text-gray-600">
-          Résolution des litiges entre clients et professionnels
-        </p>
+        <p className="text-gray-600">Résolution des litiges entre clients et professionnels</p>
+      </div>
+
+      {/* Sector tabs */}
+      <div className="flex gap-2 border-b border-gray-200 pb-1">
+        {SECTOR_TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setSectorTab(tab.key)}
+            className={[
+              'px-4 py-2 rounded-t-lg text-sm font-medium transition-colors border-b-2',
+              sectorTab === tab.key
+                ? 'border-primary text-primary bg-primary/5'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50',
+            ].join(' ')}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Statistiques */}

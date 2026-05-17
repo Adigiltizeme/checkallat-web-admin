@@ -61,20 +61,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Links - Nouvelles fonctionnalités */}
+      {/* Quick Links */}
       <div className="grid gap-6 md:grid-cols-3">
         <Link href="/reviews" className="block">
           <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg shadow-lg p-6 text-white hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">⭐ Gestion des Avis</h3>
-              <span className="bg-white bg-opacity-30 rounded-full px-3 py-1 text-sm">Nouveau</span>
             </div>
             <p className="text-sm text-white/90 mb-3">
-              Consultez et répondez aux avis des clients sur les chauffeurs
+              Consultez et répondez aux avis clients — transport, services et marketplace
             </p>
-            <div className="flex items-center text-sm font-medium">
-              <span>Accéder →</span>
-            </div>
+            <div className="text-sm font-medium">Accéder →</div>
           </div>
         </Link>
 
@@ -82,14 +79,11 @@ export default function DashboardPage() {
           <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-lg p-6 text-white hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">💳 Stats Paiements</h3>
-              <span className="bg-white bg-opacity-30 rounded-full px-3 py-1 text-sm">Nouveau</span>
             </div>
             <p className="text-sm text-white/90 mb-3">
-              Dashboard complet Cash vs In-App avec classement chauffeurs
+              Dashboard Cash vs In-App — tous secteurs confondus
             </p>
-            <div className="flex items-center text-sm font-medium">
-              <span>Accéder →</span>
-            </div>
+            <div className="text-sm font-medium">Accéder →</div>
           </div>
         </Link>
 
@@ -97,14 +91,11 @@ export default function DashboardPage() {
           <div className="bg-gradient-to-br from-red-500 to-pink-500 rounded-lg shadow-lg p-6 text-white hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">🚨 Litiges Cash</h3>
-              <span className="bg-white bg-opacity-30 rounded-full px-3 py-1 text-sm">Nouveau</span>
             </div>
             <p className="text-sm text-white/90 mb-3">
-              Gérez les divergences de paiement cash entre clients et chauffeurs
+              Divergences de paiement cash — tous secteurs confondus
             </p>
-            <div className="flex items-center text-sm font-medium">
-              <span>Accéder →</span>
-            </div>
+            <div className="text-sm font-medium">Accéder →</div>
           </div>
         </Link>
       </div>

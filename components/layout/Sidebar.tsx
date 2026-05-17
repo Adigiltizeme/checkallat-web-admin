@@ -8,7 +8,6 @@ import { useSidebar } from '@/contexts/SidebarContext';
 import { apiClient } from '@/lib/api';
 import {
   LayoutDashboard,
-  Users,
   UserCheck,
   Truck,
   Store,
@@ -23,9 +22,25 @@ import {
   Headphones,
   ChevronLeft,
   ChevronRight,
+  CalendarCheck,
+  Briefcase,
+  Lightbulb,
 } from 'lucide-react';
 
-const MENU_SECTIONS = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badgeKey?: 'pendingDrivers' | 'pendingPros' | 'pendingProposals';
+};
+
+type NavSection = {
+  title: string;
+  sectorIcon?: string;
+  items: NavItem[];
+};
+
+const MENU_SECTIONS: NavSection[] = [
   {
     title: 'Général',
     items: [
@@ -33,35 +48,55 @@ const MENU_SECTIONS = [
     ],
   },
   {
-    title: 'Utilisateurs',
+    title: 'Suivi',
     items: [
-      { href: '/clients', label: 'Clients', icon: UserCheck },
-      { href: '/pros', label: 'Pros', icon: Users },
-      { href: '/drivers', label: 'Chauffeurs', icon: Truck },
-      { href: '/sellers', label: 'Vendeurs', icon: Store },
+      { href: '/transport-requests/live-map', label: 'Carte Live', icon: MapPin },
+    ],
+  },
+  {
+    title: 'Finances',
+    items: [
+      { href: '/transport-requests/payment-stats', label: 'Stats Paiements',      icon: DollarSign },
+      { href: '/transport-requests/cash-disputes', label: 'Litiges Cash',         icon: AlertCircle },
+      { href: '/transactions',                     label: 'Transactions & Comm.', icon: CreditCard },
     ],
   },
   {
     title: 'Transport',
+    sectorIcon: '🚚',
     items: [
-      { href: '/transport-requests', label: 'Demandes', icon: Package },
-      { href: '/transport-requests/live-map', label: 'Carte Live', icon: MapPin },
-      { href: '/transport-requests/payment-stats', label: 'Stats Paiements', icon: DollarSign },
-      { href: '/transport-requests/cash-disputes', label: 'Litiges Cash', icon: AlertCircle },
+      { href: '/drivers',            label: 'Chauffeurs', icon: Truck,   badgeKey: 'pendingDrivers' },
+      { href: '/transport-requests', label: 'Demandes',   icon: Package },
     ],
   },
   {
-    title: 'Commerce',
+    title: 'Services',
+    sectorIcon: '🔧',
     items: [
+      { href: '/pros',               label: 'Prestataires',  icon: Briefcase,    badgeKey: 'pendingPros' },
+      { href: '/bookings',           label: 'Réservations',  icon: CalendarCheck },
+      { href: '/service-proposals',  label: 'Propositions',  icon: Lightbulb,    badgeKey: 'pendingProposals' },
+    ],
+  },
+  {
+    title: 'Marketplace',
+    sectorIcon: '🛒',
+    items: [
+      { href: '/sellers',  label: 'Vendeurs', icon: Store },
       { href: '/products', label: 'Produits', icon: ShoppingCart },
-      { href: '/transactions', label: 'Transactions & Commissions', icon: CreditCard },
+    ],
+  },
+  {
+    title: 'Utilisateurs',
+    items: [
+      { href: '/clients', label: 'Clients', icon: UserCheck },
     ],
   },
   {
     title: 'Satisfaction',
     items: [
-      { href: '/reviews', label: 'Avis', icon: Star },
-      { href: '/disputes', label: 'Litiges Services', icon: AlertCircle },
+      { href: '/reviews',   label: 'Avis',             icon: Star },
+      { href: '/disputes',  label: 'Litiges',          icon: AlertCircle },
     ],
   },
   {
@@ -78,9 +113,26 @@ const MENU_SECTIONS = [
   },
 ];
 
-function SidebarContent({ collapsed, pendingDrivers }: { collapsed: boolean; pendingDrivers: number }) {
+function SidebarContent({
+  collapsed,
+  pendingDrivers,
+  pendingPros,
+  pendingProposals,
+}: {
+  collapsed: boolean;
+  pendingDrivers: number;
+  pendingPros: number;
+  pendingProposals: number;
+}) {
   const pathname = usePathname();
   const { toggle, closeMobile } = useSidebar();
+
+  const getBadge = (item: NavItem): number => {
+    if (item.badgeKey === 'pendingDrivers') return pendingDrivers;
+    if (item.badgeKey === 'pendingPros') return pendingPros;
+    if (item.badgeKey === 'pendingProposals') return pendingProposals;
+    return 0;
+  };
 
   return (
     <div
@@ -89,7 +141,7 @@ function SidebarContent({ collapsed, pendingDrivers }: { collapsed: boolean; pen
         collapsed ? 'w-16' : 'w-64',
       )}
     >
-      {/* Logo + toggle button */}
+      {/* Logo + toggle */}
       <div className={cn('flex items-center h-16 border-b border-gray-800 flex-shrink-0', collapsed ? 'justify-center px-0' : 'justify-between px-4')}>
         {!collapsed && (
           <div>
@@ -111,7 +163,8 @@ function SidebarContent({ collapsed, pendingDrivers }: { collapsed: boolean; pen
         {MENU_SECTIONS.map((section) => (
           <div key={section.title}>
             {!collapsed && (
-              <h3 className="px-4 mb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <h3 className="px-4 mb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                {section.sectorIcon && <span className="text-sm">{section.sectorIcon}</span>}
                 {section.title}
               </h3>
             )}
@@ -119,8 +172,8 @@ function SidebarContent({ collapsed, pendingDrivers }: { collapsed: boolean; pen
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
-                const badge = item.href === '/drivers' && pendingDrivers > 0 ? pendingDrivers : 0;
+                const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href + '/'));
+                const badge = getBadge(item);
 
                 return (
                   <Link
@@ -170,9 +223,11 @@ function SidebarContent({ collapsed, pendingDrivers }: { collapsed: boolean; pen
 export function Sidebar() {
   const { collapsed, mobileOpen, closeMobile } = useSidebar();
   const [pendingDrivers, setPendingDrivers] = useState(0);
-  const prevPendingRef = useRef<number | null>(null);
+  const [pendingPros, setPendingPros] = useState(0);
+  const [pendingProposals, setPendingProposals] = useState(0);
+  const prevDriversRef = useRef<number | null>(null);
+  const prevProsRef = useRef<number | null>(null);
 
-  // Demande la permission de notifications navigateur au montage
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {});
@@ -180,36 +235,42 @@ export function Sidebar() {
   }, []);
 
   useEffect(() => {
-    const fetchPending = () => {
-      apiClient
-        .get('/admin/drivers', { params: { status: 'pending' } })
-        .then((data: any) => {
-          const list = data.drivers || data;
-          const count: number = Array.isArray(list) ? list.length : 0;
-
-          // Notifie si de nouvelles candidatures arrivent (pas au premier chargement)
-          if (
-            prevPendingRef.current !== null &&
-            count > prevPendingRef.current &&
-            typeof window !== 'undefined' &&
-            'Notification' in window &&
-            Notification.permission === 'granted'
-          ) {
-            const diff = count - prevPendingRef.current;
-            new Notification('CheckAllAt — Nouvelle candidature', {
-              body: diff === 1
-                ? '1 nouvelle candidature chauffeur est en attente de validation.'
-                : `${diff} nouvelles candidatures chauffeur sont en attente de validation.`,
-              icon: '/favicon.ico',
-              tag: 'driver-application',
-            });
-          }
-
-          prevPendingRef.current = count;
-          setPendingDrivers(count);
-        })
-        .catch(() => {});
+    const notify = (title: string, body: string, tag: string) => {
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/favicon.ico', tag });
+      }
     };
+
+    const fetchPending = async () => {
+      try {
+        const [driversData, prosData, proposalsData]: [any, any, any] = await Promise.all([
+          apiClient.get('/admin/drivers', { params: { status: 'pending' } }),
+          apiClient.get('/admin/pros', { params: { status: 'pending' } }),
+          apiClient.get('/admin/service-proposals/stats'),
+        ]);
+
+        const driverList = driversData?.drivers ?? driversData ?? [];
+        const driverCount: number = Array.isArray(driverList) ? driverList.length : 0;
+        if (prevDriversRef.current !== null && driverCount > prevDriversRef.current) {
+          const diff = driverCount - prevDriversRef.current;
+          notify('CheckAllAt — Chauffeur', diff === 1 ? '1 candidature chauffeur en attente.' : `${diff} candidatures chauffeur en attente.`, 'driver-application');
+        }
+        prevDriversRef.current = driverCount;
+        setPendingDrivers(driverCount);
+
+        const proList = prosData?.pros ?? prosData ?? [];
+        const proCount: number = Array.isArray(proList) ? proList.length : 0;
+        if (prevProsRef.current !== null && proCount > prevProsRef.current) {
+          const diff = proCount - prevProsRef.current;
+          notify('CheckAllAt — Prestataire', diff === 1 ? '1 candidature prestataire en attente.' : `${diff} candidatures prestataires en attente.`, 'pro-application');
+        }
+        prevProsRef.current = proCount;
+        setPendingPros(proCount);
+
+        setPendingProposals(proposalsData?.sidebarBadge ?? proposalsData?.pending ?? 0);
+      } catch { /* silent */ }
+    };
+
     fetchPending();
     const interval = setInterval(fetchPending, 30_000);
     return () => clearInterval(interval);
@@ -217,27 +278,16 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Desktop sidebar */}
       <div className="hidden md:flex h-screen flex-shrink-0">
-        <SidebarContent collapsed={collapsed} pendingDrivers={pendingDrivers} />
+        <SidebarContent collapsed={collapsed} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} />
       </div>
 
-      {/* Mobile overlay backdrop */}
       {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={closeMobile}
-        />
+        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={closeMobile} />
       )}
 
-      {/* Mobile sidebar (slide in) */}
-      <div
-        className={cn(
-          'fixed inset-y-0 left-0 z-50 md:hidden transition-transform duration-300',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full',
-        )}
-      >
-        <SidebarContent collapsed={false} pendingDrivers={pendingDrivers} />
+      <div className={cn('fixed inset-y-0 left-0 z-50 md:hidden transition-transform duration-300', mobileOpen ? 'translate-x-0' : '-translate-x-full')}>
+        <SidebarContent collapsed={false} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} />
       </div>
     </>
   );

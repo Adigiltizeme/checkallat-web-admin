@@ -142,14 +142,15 @@ export const VALIDATION_STATUSES = {
   rejected: { label: 'Rejeté', color: 'red' },
 } as const;
 
-// Catégories de services
+// Catégories de services (le déménagement est géré par le module Transport)
 export const SERVICE_CATEGORIES = [
-  { value: 'moving', label: 'Déménagement & Transport', icon: '🚚' },
-  { value: 'electricity', label: 'Électricité', icon: '⚡' },
-  { value: 'plumbing', label: 'Plomberie', icon: '🔧' },
-  { value: 'painting', label: 'Peinture', icon: '🎨' },
-  { value: 'handyman', label: 'Bricolage', icon: '🔨' },
-  { value: 'cleaning', label: 'Nettoyage', icon: '🧹' },
+  { value: 'plumbing',     label: 'Plomberie',      icon: '🔧' },
+  { value: 'electricity',  label: 'Électricité',    icon: '⚡' },
+  { value: 'painting',     label: 'Peinture',       icon: '🎨' },
+  { value: 'handyman',     label: 'Bricolage',      icon: '🔨' },
+  { value: 'cleaning',     label: 'Ménage',         icon: '🧹' },
+  { value: 'carpentry',    label: 'Menuiserie',     icon: '🪚' },
+  { value: 'air_condition',label: 'Climatisation',  icon: '❄️' },
 ] as const;
 
 // Types de véhicules (Transport)

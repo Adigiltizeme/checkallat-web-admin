@@ -10,24 +10,13 @@ interface ProFormProps {
 }
 
 const CATEGORIES = [
-  'plomberie',
   'plumbing',
-  'chauffage',
-  'heating',
-  'électricité',
-  'electrical',
-  'menuiserie',
+  'electricity',
   'carpentry',
-  'peinture',
   'painting',
-  'jardinage',
-  'gardening',
-  'nettoyage',
   'cleaning',
-  'déménagement',
-  'moving',
-  'rénovation',
-  'renovation',
+  'handyman',
+  'air_condition',
 ];
 
 export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {

@@ -22,14 +22,23 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: 'Autre',
 };
 
+const SECTOR_TABS = [
+  { key: 'all',       label: 'Tous',        type: undefined },
+  { key: 'transport', label: '🚚 Transport', type: 'transport' },
+  { key: 'services',  label: '🔧 Services',  type: 'booking' },
+];
+
 export default function SupportPage() {
   const [disputes, setDisputes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [sectorTab, setSectorTab] = useState('all');
 
   const load = () => {
-    const params: any = { type: 'transport' };
+    const sectorType = SECTOR_TABS.find(t => t.key === sectorTab)?.type;
+    const params: any = {};
+    if (sectorType) params.type = sectorType;
     if (statusFilter !== 'all') params.status = statusFilter;
     apiClient
       .get('/admin/disputes', { params })
@@ -43,7 +52,7 @@ export default function SupportPage() {
     load();
     const interval = setInterval(load, 30000);
     return () => clearInterval(interval);
-  }, [statusFilter]);
+  }, [statusFilter, sectorTab]);
 
   const filtered = categoryFilter === 'all'
     ? disputes
@@ -58,7 +67,25 @@ export default function SupportPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Aide & Support</h1>
-        <p className="text-gray-600">Gestion des tickets de litige transport ouverts par les clients</p>
+        <p className="text-gray-600">Gestion des litiges ouverts par les clients</p>
+      </div>
+
+      {/* Sector tabs */}
+      <div className="flex gap-2 border-b border-gray-200 pb-1">
+        {SECTOR_TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => { setSectorTab(tab.key); setLoading(true); }}
+            className={[
+              'px-4 py-2 rounded-t-lg text-sm font-medium transition-colors border-b-2',
+              sectorTab === tab.key
+                ? 'border-primary text-primary bg-primary/5'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50',
+            ].join(' ')}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Stats */}
@@ -113,7 +140,7 @@ export default function SupportPage() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transport</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{sectorTab === 'services' ? 'Réservation' : sectorTab === 'transport' ? 'Transport' : 'Référence'}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ouvert le</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -122,7 +149,11 @@ export default function SupportPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {filtered.map((dispute: any) => {
               const statusCfg = STATUS_LABELS[dispute.status] || { label: dispute.status, color: 'bg-gray-100 text-gray-600' };
-              const client = dispute.transportRequest?.client;
+              const client = dispute.transportRequest?.client ?? dispute.booking?.client;
+              const refId = dispute.bookingId ?? dispute.transportRequestId;
+              const refHref = dispute.bookingId
+                ? `/bookings/${dispute.bookingId}`
+                : `/transport-requests/${dispute.transportRequestId}`;
               return (
                 <tr key={dispute.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
@@ -137,12 +168,9 @@ export default function SupportPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {dispute.transportRequestId ? (
-                      <Link
-                        href={`/transport-requests/${dispute.transportRequestId}`}
-                        className="text-blue-600 hover:underline font-mono text-xs"
-                      >
-                        {dispute.transportRequestId.slice(0, 8)}…
+                    {refId ? (
+                      <Link href={refHref} className="text-blue-600 hover:underline font-mono text-xs">
+                        {refId.slice(0, 8)}…
                       </Link>
                     ) : '—'}
                   </td>

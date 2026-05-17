@@ -8,6 +8,7 @@ import { CommissionRatesModal } from '@/components/settings/CommissionRatesModal
 import { CategoriesModal } from '@/components/settings/CategoriesModal';
 import { ServiceZonesModal } from '@/components/settings/ServiceZonesModal';
 import { TransportPricingModal } from '@/components/settings/TransportPricingModal';
+import { ServicePricingModal } from '@/components/settings/ServicePricingModal';
 
 export default function SettingsPage() {
   const { settings: globalSettings, refreshSettings } = useSettings();
@@ -23,9 +24,13 @@ export default function SettingsPage() {
   const [isTransportPricingModalOpen, setIsTransportPricingModalOpen] = useState(false);
   const [transportPricings, setTransportPricings] = useState<any[]>([]);
 
+  const [isServicePricingModalOpen, setIsServicePricingModalOpen] = useState(false);
+  const [servicePricings, setServicePricings] = useState<any[]>([]);
+
   useEffect(() => {
     loadSettings();
     loadTransportPricings();
+    loadServicePricings();
   }, []);
 
   const loadSettings = async () => {
@@ -97,6 +102,30 @@ export default function SettingsPage() {
       console.error('Error saving transport pricing:', error);
       throw error;
     }
+  };
+
+  const loadServicePricings = async () => {
+    try {
+      const data = await apiClient.get('/admin/service-pricing');
+      setServicePricings(data as any[]);
+    } catch (error) {
+      console.error('Error loading service pricings:', error);
+    }
+  };
+
+  const handleSaveServicePricing = async (pricing: any) => {
+    await apiClient.put(`/admin/service-pricing/${pricing.id}`, pricing);
+    await loadServicePricings();
+  };
+
+  const handleCreateServicePricing = async (data: any) => {
+    await apiClient.post('/admin/service-pricing', data);
+    await loadServicePricings();
+  };
+
+  const handleDeleteServicePricing = async (id: string) => {
+    await apiClient.delete(`/admin/service-pricing/${id}`);
+    await loadServicePricings();
   };
 
   const handleSave = async () => {
@@ -543,6 +572,50 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Tarification Prestations de Services */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Tarification — Prestations de Services</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['Catégorie', 'Zone', 'Devise', 'Prix de base', 'Urgence ×', 'Statut'].map(h => (
+                    <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {servicePricings.length > 0 ? (
+                  servicePricings.map((p: any) => (
+                    <tr key={p.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{p.categorySlug}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 uppercase">{p.serviceZoneId}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{p.currency}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{p.basePrice} {p.currency}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{p.urgencyMultiplier}×</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded ${p.isActive ? 'text-green-600 bg-green-100' : 'text-gray-600 bg-gray-100'}`}>
+                          {p.isActive ? 'Actif' : 'Inactif'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">Aucun tarif configuré</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <button
+            onClick={() => setIsServicePricingModalOpen(true)}
+            className="mt-4 px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary-dark"
+          >
+            Gérer les tarifs
+          </button>
+        </div>
+
         {/* Expansion géographique */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Expansion Géographique</h2>
@@ -646,6 +719,15 @@ export default function SettingsPage() {
           onSave={handleSaveTransportPricing}
         />
       )}
+
+      <ServicePricingModal
+        isOpen={isServicePricingModalOpen}
+        onClose={() => setIsServicePricingModalOpen(false)}
+        pricings={servicePricings}
+        onSave={handleSaveServicePricing}
+        onCreate={handleCreateServicePricing}
+        onDelete={handleDeleteServicePricing}
+      />
     </div>
   );
 }

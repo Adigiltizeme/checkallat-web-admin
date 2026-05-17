@@ -49,9 +49,17 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 type Tab = 'reviews' | 'bad-reviews';
+type SectorTab = 'all' | 'transport' | 'services';
+
+const SECTOR_TABS: { key: SectorTab; label: string; type?: string }[] = [
+  { key: 'all',       label: 'Tous' },
+  { key: 'transport', label: '🚚 Transport', type: 'transport' },
+  { key: 'services',  label: '🔧 Services',  type: 'services' },
+];
 
 export default function ReviewsManagementPage() {
   const [activeTab, setActiveTab] = useState<Tab>('reviews');
+  const [sectorTab, setSectorTab] = useState<SectorTab>('all');
 
   // ── Onglet Avis ────────────────────────────────────────────
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -69,7 +77,7 @@ export default function ReviewsManagementPage() {
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => { loadReviews(); }, [filterRating]);
+  useEffect(() => { loadReviews(); }, [filterRating, sectorTab]);
 
   useEffect(() => {
     if (activeTab === 'bad-reviews' && badDrivers.length === 0) {
@@ -81,7 +89,9 @@ export default function ReviewsManagementPage() {
   const loadReviews = async () => {
     try {
       setLoadingReviews(true);
+      const sectorType = SECTOR_TABS.find(t => t.key === sectorTab)?.type;
       const params: any = { page: 1, limit: 50 };
+      if (sectorType) params.type = sectorType;
       if (filterRating !== 'all') params.minRating = parseInt(filterRating);
       const data = await apiClient.get('/reviews/admin/all', { params }) as { reviews: Review[] };
       setReviews(data.reviews || []);
@@ -170,34 +180,51 @@ export default function ReviewsManagementPage() {
         <p className="text-gray-600">Consultez, répondez aux avis et gérez les mauvaises notations</p>
       </div>
 
-      {/* Onglets */}
+      {/* Onglets secteur + sous-onglets — même style que /disputes */}
       <div className="flex border-b border-gray-200">
+        {SECTOR_TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => { setSectorTab(tab.key); setActiveTab('reviews'); }}
+            className={[
+              'px-4 py-3 text-sm font-medium border-b-2 transition-colors',
+              sectorTab === tab.key
+                ? 'border-primary text-primary bg-primary/5'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50',
+            ].join(' ')}
+          >
+            {tab.label}
+          </button>
+        ))}
+        <div className="flex-1" />
         <button
           onClick={() => setActiveTab('reviews')}
-          className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
+          className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'reviews'
               ? 'border-primary text-primary'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
-          ⭐ Tous les avis
+          ⭐ Avis
           <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded-full text-xs">{reviews.length}</span>
         </button>
-        <button
-          onClick={() => setActiveTab('bad-reviews')}
-          className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
-            activeTab === 'bad-reviews'
-              ? 'border-red-500 text-red-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          🔴 Mauvaises notations
-          {badStats.total > 0 && (
-            <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs">
-              {badStats.total}
-            </span>
-          )}
-        </button>
+        {sectorTab !== 'services' && (
+          <button
+            onClick={() => setActiveTab('bad-reviews')}
+            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'bad-reviews'
+                ? 'border-red-500 text-red-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            🔴 Mauvaises notations
+            {badStats.total > 0 && (
+              <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs">
+                {badStats.total}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* ═══════════════════════════════════════════════════════ */}
@@ -272,8 +299,21 @@ export default function ReviewsManagementPage() {
                         {' • '}{formatDateTime(review.createdAt)}
                       </p>
                       <p className="text-sm text-gray-500">
-                        Chauffeur: <span className="font-medium">{review.driver.user.firstName} {review.driver.user.lastName}</span>
-                        {review.transportRequest && <> {' • '}Transport #{review.transportRequest.id.slice(0, 8)}</>}
+                        {sectorTab === 'services' ? (
+                          <>
+                            Prestataire: <span className="font-medium">
+                              {(review as any).pro?.companyName || `${(review as any).pro?.user?.firstName} ${(review as any).pro?.user?.lastName}`}
+                            </span>
+                            {(review as any).booking && (
+                              <> {' • '}{(review as any).booking?.category?.icon} {(review as any).booking?.category?.nameFr}</>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            Chauffeur: <span className="font-medium">{review.driver.user.firstName} {review.driver.user.lastName}</span>
+                            {review.transportRequest && <> {' • '}Transport #{review.transportRequest.id.slice(0, 8)}</>}
+                          </>
+                        )}
                       </p>
                     </div>
                     {!review.proResponse && (
