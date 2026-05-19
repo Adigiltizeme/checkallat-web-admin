@@ -31,7 +31,7 @@ type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  badgeKey?: 'pendingDrivers' | 'pendingPros' | 'pendingProposals';
+  badgeKey?: 'pendingDrivers' | 'pendingPros' | 'pendingProposals' | 'pendingBookings';
 };
 
 type NavSection = {
@@ -74,7 +74,7 @@ const MENU_SECTIONS: NavSection[] = [
     sectorIcon: '🔧',
     items: [
       { href: '/pros',               label: 'Prestataires',  icon: Briefcase,    badgeKey: 'pendingPros' },
-      { href: '/bookings',           label: 'Réservations',  icon: CalendarCheck },
+      { href: '/bookings',           label: 'Réservations',  icon: CalendarCheck, badgeKey: 'pendingBookings' },
       { href: '/service-proposals',  label: 'Propositions',  icon: Lightbulb,    badgeKey: 'pendingProposals' },
     ],
   },
@@ -89,7 +89,7 @@ const MENU_SECTIONS: NavSection[] = [
   {
     title: 'Utilisateurs',
     items: [
-      { href: '/clients', label: 'Clients', icon: UserCheck },
+      { href: '/clients', label: 'Users', icon: UserCheck },
     ],
   },
   {
@@ -118,11 +118,13 @@ function SidebarContent({
   pendingDrivers,
   pendingPros,
   pendingProposals,
+  pendingBookings,
 }: {
   collapsed: boolean;
   pendingDrivers: number;
   pendingPros: number;
   pendingProposals: number;
+  pendingBookings: number;
 }) {
   const pathname = usePathname();
   const { toggle, closeMobile } = useSidebar();
@@ -131,6 +133,7 @@ function SidebarContent({
     if (item.badgeKey === 'pendingDrivers') return pendingDrivers;
     if (item.badgeKey === 'pendingPros') return pendingPros;
     if (item.badgeKey === 'pendingProposals') return pendingProposals;
+    if (item.badgeKey === 'pendingBookings') return pendingBookings;
     return 0;
   };
 
@@ -225,8 +228,11 @@ export function Sidebar() {
   const [pendingDrivers, setPendingDrivers] = useState(0);
   const [pendingPros, setPendingPros] = useState(0);
   const [pendingProposals, setPendingProposals] = useState(0);
+  const [pendingBookings, setPendingBookings] = useState(0);
   const prevDriversRef = useRef<number | null>(null);
   const prevProsRef = useRef<number | null>(null);
+  const prevProposalsRef = useRef<number | null>(null);
+  const prevBookingsRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
@@ -243,10 +249,11 @@ export function Sidebar() {
 
     const fetchPending = async () => {
       try {
-        const [driversData, prosData, proposalsData]: [any, any, any] = await Promise.all([
+        const [driversData, prosData, proposalsData, bookingsData]: [any, any, any, any] = await Promise.all([
           apiClient.get('/admin/drivers', { params: { status: 'pending' } }),
           apiClient.get('/admin/pros', { params: { status: 'pending' } }),
           apiClient.get('/admin/service-proposals/stats'),
+          apiClient.get('/admin/bookings/stats'),
         ]);
 
         const driverList = driversData?.drivers ?? driversData ?? [];
@@ -267,7 +274,21 @@ export function Sidebar() {
         prevProsRef.current = proCount;
         setPendingPros(proCount);
 
-        setPendingProposals(proposalsData?.sidebarBadge ?? proposalsData?.pending ?? 0);
+        const proposalBadge: number = proposalsData?.sidebarBadge ?? proposalsData?.pending ?? 0;
+        if (prevProposalsRef.current !== null && proposalBadge > prevProposalsRef.current) {
+          const diff = proposalBadge - prevProposalsRef.current;
+          notify('CheckAllAt — Proposition', diff === 1 ? '1 nouvelle proposition de service.' : `${diff} nouvelles propositions de service.`, 'service-proposal');
+        }
+        prevProposalsRef.current = proposalBadge;
+        setPendingProposals(proposalBadge);
+
+        const bookingCount: number = bookingsData?.pending ?? 0;
+        if (prevBookingsRef.current !== null && bookingCount > prevBookingsRef.current) {
+          const diff = bookingCount - prevBookingsRef.current;
+          notify('CheckAllAt — Réservation', diff === 1 ? '1 nouvelle réservation en attente.' : `${diff} nouvelles réservations en attente.`, 'booking-pending');
+        }
+        prevBookingsRef.current = bookingCount;
+        setPendingBookings(bookingCount);
       } catch { /* silent */ }
     };
 
@@ -279,7 +300,7 @@ export function Sidebar() {
   return (
     <>
       <div className="hidden md:flex h-screen flex-shrink-0">
-        <SidebarContent collapsed={collapsed} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} />
+        <SidebarContent collapsed={collapsed} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} pendingBookings={pendingBookings} />
       </div>
 
       {mobileOpen && (
@@ -287,7 +308,7 @@ export function Sidebar() {
       )}
 
       <div className={cn('fixed inset-y-0 left-0 z-50 md:hidden transition-transform duration-300', mobileOpen ? 'translate-x-0' : '-translate-x-full')}>
-        <SidebarContent collapsed={false} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} />
+        <SidebarContent collapsed={false} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} pendingBookings={pendingBookings} />
       </div>
     </>
   );
