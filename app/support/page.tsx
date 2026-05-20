@@ -23,9 +23,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const SECTOR_TABS = [
-  { key: 'all',       label: 'Tous',        type: undefined },
-  { key: 'transport', label: '🚚 Transport', type: 'transport' },
-  { key: 'services',  label: '🔧 Services',  type: 'booking' },
+  { key: 'all',         label: 'Tous',          type: undefined },
+  { key: 'transport',   label: '🚚 Transport',  type: 'transport' },
+  { key: 'services',    label: '🔧 Services',   type: 'booking' },
+  { key: 'marketplace', label: '🛒 Marketplace', type: 'marketplace' },
 ];
 
 export default function SupportPage() {
@@ -140,7 +141,9 @@ export default function SupportPage() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{sectorTab === 'services' ? 'Réservation' : sectorTab === 'transport' ? 'Transport' : 'Référence'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {sectorTab === 'services' ? 'Réservation' : sectorTab === 'transport' ? 'Transport' : sectorTab === 'marketplace' ? 'Commande' : 'Référence'}
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ouvert le</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -149,11 +152,13 @@ export default function SupportPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {filtered.map((dispute: any) => {
               const statusCfg = STATUS_LABELS[dispute.status] || { label: dispute.status, color: 'bg-gray-100 text-gray-600' };
-              const client = dispute.transportRequest?.client ?? dispute.booking?.client;
-              const refId = dispute.bookingId ?? dispute.transportRequestId;
+              const client = dispute.transportRequest?.client ?? dispute.booking?.client ?? dispute.marketplaceOrder?.user;
+              const refId = dispute.bookingId ?? dispute.transportRequestId ?? dispute.marketplaceOrderId;
               const refHref = dispute.bookingId
                 ? `/bookings/${dispute.bookingId}`
-                : `/transport-requests/${dispute.transportRequestId}`;
+                : dispute.marketplaceOrderId
+                  ? `/products?order=${dispute.marketplaceOrderId}`
+                  : `/transport-requests/${dispute.transportRequestId}`;
               return (
                 <tr key={dispute.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">

@@ -57,6 +57,9 @@ const SECTOR_TABS: { key: SectorTab; label: string; type?: string }[] = [
   { key: 'services',  label: '🔧 Services',  type: 'services' },
 ];
 
+// Les mauvaises notations sont gérées côté drivers (transport) et pros (services)
+const BAD_REVIEWS_AVAILABLE = ['all', 'transport', 'services'] as const;
+
 export default function ReviewsManagementPage() {
   const [activeTab, setActiveTab] = useState<Tab>('reviews');
   const [sectorTab, setSectorTab] = useState<SectorTab>('all');
@@ -72,18 +75,24 @@ export default function ReviewsManagementPage() {
 
   // ── Onglet Mauvaises Notations ────────────────────────────
   const [badDrivers, setBadDrivers] = useState<DriverWithBadReviews[]>([]);
+  const [badPros, setBadPros] = useState<DriverWithBadReviews[]>([]);
   const [loadingBad, setLoadingBad] = useState(false);
   const [filterRisk, setFilterRisk] = useState<string>('all');
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  const isProSector = sectorTab === 'services';
+  const badList = isProSector ? badPros : badDrivers;
+  const badApiPrefix = isProSector ? 'pro' : 'driver';
+
   useEffect(() => { loadReviews(); }, [filterRating, sectorTab]);
 
   useEffect(() => {
-    if (activeTab === 'bad-reviews' && badDrivers.length === 0) {
-      loadBadDrivers();
+    if (activeTab === 'bad-reviews') {
+      if (isProSector && badPros.length === 0) loadBadPros();
+      else if (!isProSector && badDrivers.length === 0) loadBadDrivers();
     }
-  }, [activeTab]);
+  }, [activeTab, sectorTab]);
 
   // ── Chargement des avis ────────────────────────────────────
   const loadReviews = async () => {
@@ -109,7 +118,19 @@ export default function ReviewsManagementPage() {
       const data = await apiClient.get('/reviews/admin/bad-reviews') as DriverWithBadReviews[];
       setBadDrivers(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Erreur mauvaises notations:', error);
+      console.error('Erreur mauvaises notations chauffeurs:', error);
+    } finally {
+      setLoadingBad(false);
+    }
+  };
+
+  const loadBadPros = async () => {
+    try {
+      setLoadingBad(true);
+      const data = await apiClient.get('/reviews/admin/bad-reviews-pros') as DriverWithBadReviews[];
+      setBadPros(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Erreur mauvaises notations pros:', error);
     } finally {
       setLoadingBad(false);
     }
@@ -142,18 +163,18 @@ export default function ReviewsManagementPage() {
 
   // ── Actions sur mauvaises notations ───────────────────────
   const handleAction = async (
-    driverId: string,
+    entityId: string,
     action: 'warn' | 'require-training' | 'training-completed' | 'resolve',
   ) => {
-    setActionLoading(`${driverId}-${action}`);
+    setActionLoading(`${entityId}-${action}`);
     try {
       if (action === 'training-completed') {
-        await apiClient.patch(`/reviews/admin/driver/${driverId}/training-completed`);
+        await apiClient.patch(`/reviews/admin/${badApiPrefix}/${entityId}/training-completed`);
       } else {
-        await apiClient.post(`/reviews/admin/driver/${driverId}/${action}`, {});
+        await apiClient.post(`/reviews/admin/${badApiPrefix}/${entityId}/${action}`, {});
       }
       alert('✅ Action effectuée avec succès');
-      loadBadDrivers();
+      isProSector ? loadBadPros() : loadBadDrivers();
     } catch (error: any) {
       alert('❌ Erreur: ' + (error?.response?.data?.message || 'Action impossible'));
     } finally {
@@ -165,12 +186,12 @@ export default function ReviewsManagementPage() {
   const averageRating = reviews.length > 0
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : '0.0';
   const badStats = {
-    total: badDrivers.length,
-    critical: badDrivers.filter(d => d.riskLevel === 'critical').length,
-    high: badDrivers.filter(d => d.riskLevel === 'high').length,
-    requiresTraining: badDrivers.filter(d => d.requiresTraining && !d.trainingCompletedAt).length,
+    total: badList.length,
+    critical: badList.filter(d => d.riskLevel === 'critical').length,
+    high: badList.filter(d => d.riskLevel === 'high').length,
+    requiresTraining: badList.filter(d => d.requiresTraining && !d.trainingCompletedAt).length,
   };
-  const filteredBad = filterRisk === 'all' ? badDrivers : badDrivers.filter(d => d.riskLevel === filterRisk);
+  const filteredBad = filterRisk === 'all' ? badList : badList.filter(d => d.riskLevel === filterRisk);
 
   return (
     <div className="space-y-6">
@@ -208,7 +229,7 @@ export default function ReviewsManagementPage() {
           ⭐ Avis
           <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded-full text-xs">{reviews.length}</span>
         </button>
-        {sectorTab !== 'services' && (
+        {(BAD_REVIEWS_AVAILABLE as readonly string[]).includes(sectorTab) && (
           <button
             onClick={() => setActiveTab('bad-reviews')}
             className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
@@ -217,7 +238,7 @@ export default function ReviewsManagementPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            🔴 Mauvaises notations
+            🔴 Mauvaises notations {isProSector ? 'pros' : 'chauffeurs'}
             {badStats.total > 0 && (
               <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs">
                 {badStats.total}
@@ -440,8 +461,8 @@ export default function ReviewsManagementPage() {
                 }`}
               >
                 {level === 'all'
-                  ? `Tous (${badDrivers.length})`
-                  : `${RISK_CONFIG[level].icon} ${RISK_CONFIG[level].label} (${badDrivers.filter(d => d.riskLevel === level).length})`
+                  ? `Tous (${badList.length})`
+                  : `${RISK_CONFIG[level].icon} ${RISK_CONFIG[level].label} (${badList.filter(d => d.riskLevel === level).length})`
                 }
               </button>
             ))}
@@ -453,11 +474,12 @@ export default function ReviewsManagementPage() {
           ) : filteredBad.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-lg shadow">
               <p className="text-4xl mb-3">✅</p>
-              <p className="text-gray-500 font-medium">Aucun chauffeur avec des problèmes de notation</p>
+              <p className="text-gray-500 font-medium">Aucun {isProSector ? 'prestataire' : 'chauffeur'} avec des problèmes de notation</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredBad.map(driver => {
+              {filteredBad.map(entity => {
+                const driver = entity;
                 const risk = RISK_CONFIG[driver.riskLevel];
                 const isExpanded = expandedDriver === driver.id;
                 return (
@@ -515,13 +537,15 @@ export default function ReviewsManagementPage() {
                             <p className="text-xs text-gray-500">Avertissements</p>
                             <p className="font-bold text-orange-600">{driver.badReviewWarnings}</p>
                           </div>
+                          {!isProSector && (
+                            <div>
+                              <p className="text-xs text-gray-500">Taux ponctualité</p>
+                              <p className="font-bold">{driver.onTimeRate?.toFixed(0) ?? '—'}%</p>
+                            </div>
+                          )}
                           <div>
-                            <p className="text-xs text-gray-500">Taux ponctualité</p>
-                            <p className="font-bold">{driver.onTimeRate.toFixed(0)}%</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Total transports</p>
-                            <p className="font-bold">{driver.totalTransports}</p>
+                            <p className="text-xs text-gray-500">{isProSector ? 'Total prestations' : 'Total transports'}</p>
+                            <p className="font-bold">{isProSector ? (driver as any).totalCompletedBookings ?? 0 : driver.totalTransports}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500">Dernier avertissement</p>
