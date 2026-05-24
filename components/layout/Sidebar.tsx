@@ -37,6 +37,7 @@ type NavItem = {
 type NavSection = {
   title: string;
   sectorIcon?: string;
+  color?: string; // hex accent color for section header + inactive icons
   items: NavItem[];
 };
 
@@ -49,21 +50,25 @@ const MENU_SECTIONS: NavSection[] = [
   },
   {
     title: 'Suivi',
+    color: '#06B6D4',
     items: [
       { href: '/transport-requests/live-map', label: 'Carte Live', icon: MapPin },
     ],
   },
   {
     title: 'Finances',
+    color: '#3B82F6',
     items: [
       { href: '/transport-requests/payment-stats', label: 'Stats Paiements',      icon: DollarSign },
       { href: '/transport-requests/cash-disputes', label: 'Litiges Cash',         icon: AlertCircle },
       { href: '/transactions',                     label: 'Transactions & Comm.', icon: CreditCard },
+      { href: '/payouts',                          label: 'Versements presta.',   icon: DollarSign },
     ],
   },
   {
     title: 'Transport',
     sectorIcon: '🚚',
+    color: '#F59E0B',
     items: [
       { href: '/drivers',            label: 'Chauffeurs', icon: Truck,   badgeKey: 'pendingDrivers' },
       { href: '/transport-requests', label: 'Demandes',   icon: Package },
@@ -72,6 +77,7 @@ const MENU_SECTIONS: NavSection[] = [
   {
     title: 'Services',
     sectorIcon: '🔧',
+    color: '#10B981',
     items: [
       { href: '/pros',               label: 'Prestataires',  icon: Briefcase,    badgeKey: 'pendingPros' },
       { href: '/bookings',           label: 'Réservations',  icon: CalendarCheck, badgeKey: 'pendingBookings' },
@@ -81,6 +87,7 @@ const MENU_SECTIONS: NavSection[] = [
   {
     title: 'Marketplace',
     sectorIcon: '🛒',
+    color: '#8B5CF6',
     items: [
       { href: '/sellers',  label: 'Vendeurs', icon: Store },
       { href: '/products', label: 'Produits', icon: ShoppingCart },
@@ -94,6 +101,7 @@ const MENU_SECTIONS: NavSection[] = [
   },
   {
     title: 'Satisfaction',
+    color: '#EAB308',
     items: [
       { href: '/reviews',   label: 'Avis',             icon: Star },
       { href: '/disputes',  label: 'Litiges',          icon: AlertCircle },
@@ -166,17 +174,26 @@ function SidebarContent({
         {MENU_SECTIONS.map((section) => (
           <div key={section.title}>
             {!collapsed && (
-              <h3 className="px-4 mb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+              <h3
+                className="px-4 mb-1 text-xs font-semibold uppercase tracking-wider flex items-center gap-1"
+                style={{ color: section.color ?? '#6B7280' }}
+              >
                 {section.sectorIcon && <span className="text-sm">{section.sectorIcon}</span>}
                 {section.title}
               </h3>
             )}
-            {collapsed && <div className="mx-3 mb-1 border-t border-gray-800" />}
+            {collapsed && (
+              <div
+                className="mx-3 mb-1 border-t"
+                style={{ borderColor: section.color ? section.color + '40' : '#1F2937' }}
+              />
+            )}
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href + '/'));
                 const badge = getBadge(item);
+                const iconColor = isActive ? 'white' : (section.color ?? '#9CA3AF');
 
                 return (
                   <Link
@@ -193,7 +210,9 @@ function SidebarContent({
                     )}
                   >
                     <div className="relative flex-shrink-0">
-                      <Icon className="h-4 w-4" />
+                      <span style={{ color: iconColor }}>
+                        <Icon className="h-4 w-4" />
+                      </span>
                       {badge > 0 && collapsed && (
                         <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-400 text-[9px] font-bold text-yellow-900">
                           {badge > 9 ? '9+' : badge}

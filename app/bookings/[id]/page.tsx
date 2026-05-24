@@ -3,12 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { apiClient } from '@/lib/api';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { StatusBadge, StatusConfig } from '@/components/shared/StatusBadge';
-import { SectionCard } from '@/components/shared/SectionCard';
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+
+const BookingDetailMap = dynamic(
+  () => import('@/components/services/BookingDetailMap'),
+  { ssr: false, loading: () => (
+    <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg border border-gray-200">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+    </div>
+  )},
+);
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   pending:     { label: 'En attente',  color: 'bg-yellow-100 text-yellow-800', icon: '⏳' },
@@ -89,6 +96,10 @@ export default function BookingDetailPage() {
   const [proSearchResults,     setProSearchResults]     = useState<any[]>([]);
   const [proSearchLoading,     setProSearchLoading]     = useState(false);
 
+  // Countdown pour les réservations immédiates en attente (30s fenêtre d'auto-assign)
+  const BOOKING_ACCEPT_TIMEOUT_SEC = 30;
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+
   const loadBooking = () =>
     apiClient
       .get(`/admin/bookings/${bookingId}`)
@@ -100,6 +111,25 @@ export default function BookingDetailPage() {
     const interval = setInterval(loadBooking, 5_000);
     return () => clearInterval(interval);
   }, [bookingId]);
+
+  // Countdown pour réservations immédiates en attente
+  useEffect(() => {
+    if (!booking || booking.status !== 'pending' || booking.bookingType !== 'immediate') {
+      setSecondsLeft(null);
+      return;
+    }
+    const elapsed = Math.floor((Date.now() - new Date(booking.createdAt).getTime()) / 1000);
+    const remaining = BOOKING_ACCEPT_TIMEOUT_SEC - elapsed;
+    setSecondsLeft(remaining > 0 ? remaining : 0);
+
+    const tick = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev === null || prev <= 1) { clearInterval(tick); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [booking?.id, booking?.status, booking?.bookingType, booking?.createdAt]);
 
   const searchPros = async (query: string) => {
     setProSearchQuery(query);
@@ -244,6 +274,42 @@ export default function BookingDetailPage() {
         </div>
       </div>
 
+      {/* Countdown — réservations immédiates en attente uniquement */}
+      {booking.status === 'pending' && booking.bookingType === 'immediate' && secondsLeft !== null && (
+        <div className={`p-4 rounded-lg border flex items-center gap-4 ${
+          secondsLeft === 0
+            ? 'bg-red-50 border-red-300'
+            : secondsLeft < 15
+            ? 'bg-orange-50 border-orange-300'
+            : 'bg-yellow-50 border-yellow-300'
+        }`}>
+          <div className={`text-4xl font-mono font-bold w-20 text-center ${
+            secondsLeft === 0 ? 'text-red-700' : secondsLeft < 15 ? 'text-orange-700' : 'text-yellow-700'
+          }`}>
+            {String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:{String(secondsLeft % 60).padStart(2, '0')}
+          </div>
+          <div className="flex-1">
+            {secondsLeft === 0 ? (
+              <>
+                <p className="font-bold text-red-800">⏰ Fenêtre d'acceptation expirée</p>
+                <p className="text-sm text-red-700">Le système a tenté une auto-assignation. Vérifiez si un pro a été assigné ou assignez-en un manuellement.</p>
+              </>
+            ) : (
+              <>
+                <p className="font-bold text-yellow-800">⚡ Réservation immédiate — en attente d'acceptation pro</p>
+                <p className="text-sm text-yellow-700">
+                  Les pros éligibles ont été notifiés. Auto-assignation dans {secondsLeft}s si aucun n'accepte.
+                  Vous pouvez également assigner manuellement ci-dessous.
+                </p>
+              </>
+            )}
+          </div>
+          <div className={`w-2 self-stretch rounded-full ${
+            secondsLeft === 0 ? 'bg-red-400' : secondsLeft < 15 ? 'bg-orange-400' : 'bg-yellow-400'
+          }`} />
+        </div>
+      )}
+
       {/* Actions */}
       <div className="bg-white p-5 rounded-lg shadow">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Actions admin</h2>
@@ -332,6 +398,25 @@ export default function BookingDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Carte d'intervention */}
+      {booking.addressLat && booking.addressLng && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100">
+            <h2 className="text-lg font-semibold text-gray-900">🗺️ Carte d'intervention</h2>
+          </div>
+          <div className="h-64">
+            <BookingDetailMap
+              bookingId={bookingId}
+              addressLat={booking.addressLat}
+              addressLng={booking.addressLng}
+              address={booking.address ?? ''}
+              status={booking.status}
+              proId={booking.proId ?? null}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Client + Pro */}
       <div className="grid md:grid-cols-2 gap-6">
@@ -747,65 +832,93 @@ export default function BookingDetailPage() {
 
       {/* Modal assignation pro */}
       {showAssignModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Assigner un professionnel</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Catégorie : <span className="font-medium text-gray-700">{serviceName}</span>
-            </p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">👤 Assigner un professionnel</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    Catégorie : <span className="font-semibold text-emerald-700">{serviceName}</span>
+                  </p>
+                </div>
+                <button onClick={() => { setShowAssignModal(false); setProIdToAssign(''); setProSearchQuery(''); setProSearchResults([]); }}
+                  className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+              </div>
 
-            <div className="relative mb-2">
-              <input type="text" placeholder="Rechercher par nom…" value={proSearchQuery}
-                onChange={e => searchPros(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-              {proSearchLoading && (
-                <span className="absolute right-3 top-2.5 inline-block w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-              )}
+              {/* Search */}
+              <div className="relative mt-4">
+                <input type="text" placeholder="Rechercher par nom, email…" value={proSearchQuery}
+                  onChange={e => searchPros(e.target.value)} autoFocus
+                  className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent" />
+                <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
+                {proSearchLoading && (
+                  <span className="absolute right-3 top-2.5 inline-block w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
             </div>
 
-            {proSearchResults.length > 0 && (
-              <div className="max-h-52 overflow-y-auto border border-gray-200 rounded-md mb-4 divide-y divide-gray-100">
-                {proSearchResults.map((p: any) => {
-                  const name = `${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim();
-                  const isSelected = proIdToAssign === p.id;
-                  return (
-                    <button key={p.id} onClick={() => setProIdToAssign(p.id)}
-                      className={`w-full text-left px-3 py-2.5 hover:bg-indigo-50 transition-colors text-sm ${isSelected ? 'bg-indigo-50 border-l-2 border-indigo-500' : ''}`}>
-                      <p className="font-medium text-gray-900">{name || '—'}</p>
-                      <p className="text-xs text-gray-500">
-                        {(p.serviceCategories as string[] | null)?.join(', ') ?? '—'}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            {proSearchQuery && !proSearchLoading && proSearchResults.length === 0 && (
-              <p className="text-sm text-gray-400 mb-4 text-center">Aucun pro trouvé.</p>
-            )}
+            {/* Results */}
+            <div className="flex-1 overflow-y-auto p-3">
+              {proSearchResults.length > 0 ? (
+                <div className="space-y-1">
+                  {proSearchResults.map((p: any) => {
+                    const name = `${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim();
+                    const isSelected = proIdToAssign === p.id;
+                    const rating = p.averageRating ? Number(p.averageRating).toFixed(1) : null;
+                    const cats = (p.serviceCategories as string[] | null)?.join(', ') ?? '—';
+                    return (
+                      <button key={p.id} onClick={() => setProIdToAssign(p.id)}
+                        className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all text-sm ${
+                          isSelected
+                            ? 'border-emerald-500 bg-emerald-50'
+                            : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+                        }`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm flex-shrink-0">
+                            {name.charAt(0).toUpperCase() || '?'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-gray-900 truncate">{name || '—'}</p>
+                              {rating && (
+                                <span className="text-xs text-yellow-600 font-medium flex-shrink-0">⭐ {rating}</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 truncate">{cats}</p>
+                            {p.user?.email && <p className="text-xs text-gray-400 truncate">{p.user.email}</p>}
+                          </div>
+                          {isSelected && <span className="text-emerald-600 text-lg flex-shrink-0">✓</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : proSearchQuery && !proSearchLoading ? (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-2xl mb-2">🔍</p>
+                  <p className="text-sm">Aucun prestataire trouvé pour "{proSearchQuery}"</p>
+                  <p className="text-xs mt-1">Vérifiez le nom ou essayez sans filtre de catégorie</p>
+                </div>
+              ) : !proSearchQuery ? (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-2xl mb-2">👆</p>
+                  <p className="text-sm">Tapez un nom pour rechercher parmi les prestataires actifs</p>
+                </div>
+              ) : null}
+            </div>
 
-            {proIdToAssign && (
-              <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-indigo-50 border border-indigo-200 rounded-md text-sm">
-                <span className="text-indigo-700 font-medium">Pro sélectionné :</span>
-                <span className="text-indigo-900">
-                  {(() => {
-                    const p = proSearchResults.find(x => x.id === proIdToAssign);
-                    return p ? `${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim() : proIdToAssign.slice(0, 8) + '…';
-                  })()}
-                </span>
-                <button onClick={() => setProIdToAssign('')} className="ml-auto text-indigo-400 hover:text-indigo-600 text-xs">✕</button>
-              </div>
-            )}
-
-            <div className="flex gap-3 justify-end">
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-100 flex gap-3">
               <button onClick={() => { setShowAssignModal(false); setProIdToAssign(''); setProSearchQuery(''); setProSearchResults([]); }}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 text-sm">
+                className="flex-1 px-4 py-2.5 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium">
                 Annuler
               </button>
               <button onClick={handleAssignPro} disabled={!proIdToAssign.trim() || assigning}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium flex items-center gap-2">
+                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-semibold flex items-center justify-center gap-2">
                 {assigning && <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                Assigner
+                {proIdToAssign ? `Assigner ${proSearchResults.find(x => x.id === proIdToAssign)?.user?.firstName ?? ''}` : 'Choisir un pro'}
               </button>
             </div>
           </div>
