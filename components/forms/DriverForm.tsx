@@ -36,6 +36,8 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
     hasToolkit: false,
     hasPackingMaterial: false,
     serviceRadius: 20,
+    locationLat: 0,
+    locationLng: 0,
     status: 'pending',
   });
 
@@ -58,6 +60,8 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
         hasToolkit: driver.hasToolkit || false,
         hasPackingMaterial: driver.hasPackingMaterial || false,
         serviceRadius: driver.serviceRadius || 20,
+        locationLat: driver.locationLat ?? 0,
+        locationLng: driver.locationLng ?? 0,
         status: driver.status || 'pending',
       });
     }
@@ -82,6 +86,8 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
           hasToolkit: formData.hasToolkit,
           hasPackingMaterial: formData.hasPackingMaterial,
           serviceRadius: formData.serviceRadius,
+          locationLat: formData.locationLat || null,
+          locationLng: formData.locationLng || null,
           status: formData.status,
         });
       } else {
@@ -229,7 +235,32 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
             required
           />
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Latitude (position)</label>
+          <input
+            type="number"
+            step="0.000001"
+            value={formData.locationLat}
+            onChange={(e) => setFormData({ ...formData, locationLat: e.target.value ? parseFloat(e.target.value) : 0 })}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Longitude (position)</label>
+          <input
+            type="number"
+            step="0.000001"
+            value={formData.locationLng}
+            onChange={(e) => setFormData({ ...formData, locationLng: e.target.value ? parseFloat(e.target.value) : 0 })}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+          />
+        </div>
       </div>
+      <p className="text-xs text-gray-400 -mt-2">
+        Latitude/Longitude optionnelles — le chauffeur les met à jour en temps réel depuis l'app.
+      </p>
 
       {/* Helpers */}
       <div className="space-y-2">

@@ -4,6 +4,81 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 
+function ClientForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    password: '',
+    preferredLanguage: 'fr',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await apiClient.post('/admin/users', formData);
+      alert('Client créé avec succès');
+      onSuccess();
+    } catch (err: any) {
+      alert('Erreur: ' + (err.response?.data?.message || 'Erreur inconnue'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
+          <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone <span className="text-red-500">*</span></label>
+          <input type="tel" required placeholder="+213555123456" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Prénom <span className="text-red-500">*</span></label>
+          <input type="text" required value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Nom <span className="text-red-500">*</span></label>
+          <input type="text" required value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe <span className="text-red-500">*</span></label>
+        <input type="password" required value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Langue préférée</label>
+        <select value={formData.preferredLanguage} onChange={(e) => setFormData({ ...formData, preferredLanguage: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+          <option value="fr">Français</option>
+          <option value="ar">Arabe</option>
+          <option value="en">Anglais</option>
+        </select>
+      </div>
+      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <button type="button" onClick={onCancel} disabled={loading}
+          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Annuler</button>
+        <button type="submit" disabled={loading}
+          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50">
+          {loading ? 'Création...' : 'Créer le client'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 const STATUS_LABELS: Record<string, string> = {
   active: 'Actif',
   suspended: 'Suspendu',
@@ -33,6 +108,7 @@ export default function ClientsPage() {
   const [segment, setSegment] = useState<Segment>('all');
   const [filters, setFilters] = useState({ status: 'all', cashRestricted: 'all', search: '' });
   const [searchInput, setSearchInput] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const loadClients = (isInitialLoad = false) => {
     if (isInitialLoad) setLoading(true);
@@ -106,7 +182,27 @@ export default function ClientsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Gestion des Utilisateurs</h1>
           <p className="text-gray-600">Supervision, segmentation et modération des comptes</p>
         </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
+        >
+          + Créer un client
+        </button>
       </div>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Créer un client</h2>
+              <ClientForm
+                onSuccess={() => { setShowCreateModal(false); loadClients(false); }}
+                onCancel={() => setShowCreateModal(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

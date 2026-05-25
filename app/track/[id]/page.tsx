@@ -3,7 +3,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Map, { Marker, Source, Layer, NavigationControl, MapRef } from 'react-map-gl/mapbox';
 import { MapPin, Navigation, Truck, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
-import 'mapbox-gl/dist/mapbox-gl.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
