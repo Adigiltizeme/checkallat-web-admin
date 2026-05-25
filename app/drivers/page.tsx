@@ -158,13 +158,13 @@ export default function DriversPage() {
         </button>
       </div>
 
-      <div className="flex gap-4 items-center">
+      <div className="flex flex-wrap gap-3 items-center">
         <input
           type="text"
           placeholder="Rechercher par nom, téléphone..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="flex-1 max-w-sm px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          className="flex-1 min-w-[180px] max-w-sm px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
         />
 
         <select
@@ -184,7 +184,7 @@ export default function DriversPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

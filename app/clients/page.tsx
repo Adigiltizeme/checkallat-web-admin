@@ -109,7 +109,7 @@ export default function ClientsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <div className="text-2xl font-bold text-green-600">{activeCount}</div>
           <div className="text-sm text-gray-500">Actifs</div>
@@ -179,7 +179,7 @@ export default function ClientsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

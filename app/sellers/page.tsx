@@ -111,7 +111,7 @@ export default function SellersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Gestion des Vendeurs Marketplace</h1>
           <p className="text-gray-600">
@@ -129,7 +129,7 @@ export default function SellersPage() {
         </button>
       </div>
 
-      <div className="flex gap-4 items-center">
+      <div className="flex gap-3 items-center flex-wrap">
         <input
           type="text"
           placeholder="Rechercher par nom, entreprise..."
@@ -152,7 +152,7 @@ export default function SellersPage() {
         {fetching && <span className="text-sm text-gray-400">Chargement...</span>}
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
         {loading ? (
           <div className="text-center py-12 text-gray-500">Chargement...</div>
         ) : (

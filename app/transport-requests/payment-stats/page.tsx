@@ -264,7 +264,7 @@ export default function PaymentStatsPage() {
 
       {/* Services par catégorie */}
       {activeTab === 'services_detail' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
           {stats.servicesByCategory.length === 0 ? (
             <div className="text-center py-12 text-gray-500">Aucune donnée services</div>
           ) : (
@@ -326,7 +326,7 @@ export default function PaymentStatsPage() {
 
       {/* Marketplace par type */}
       {activeTab === 'marketplace_detail' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
           {stats.marketplaceByType.length === 0 ? (
             <div className="text-center py-12 text-gray-500">Aucune donnée marketplace</div>
           ) : (
@@ -375,7 +375,7 @@ export default function PaymentStatsPage() {
 
       {/* Classement chauffeurs */}
       {activeTab === 'drivers' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
           <div className="p-5 border-b">
             <h2 className="text-lg font-semibold">Classement par taux de paiement sécurisé</h2>
             <p className="text-sm text-gray-500 mt-0.5">Badge à partir de 10 transports avec ≥ 90% in-app</p>

@@ -91,7 +91,7 @@ export default function ServiceProposalsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
         {loading ? (
           <div className="py-12 text-center text-gray-500">Chargement...</div>
         ) : (

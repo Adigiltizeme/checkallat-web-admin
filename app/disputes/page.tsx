@@ -44,7 +44,7 @@ export default function DisputesPage() {
       </div>
 
       {/* Sector tabs */}
-      <div className="flex gap-2 border-b border-gray-200 pb-1">
+      <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-1">
         {SECTOR_TABS.map(tab => (
           <button
             key={tab.key}
@@ -91,7 +91,7 @@ export default function DisputesPage() {
       </div>
 
       {/* Table des litiges */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

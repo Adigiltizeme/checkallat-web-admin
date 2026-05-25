@@ -409,7 +409,7 @@ export default function BookingsPage() {
 
       {/* Footer */}
       {!loading && (
-        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+        <div className="bg-white rounded-lg shadow p-4 flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-gray-600">
             {filteredBookings.length} réservation{filteredBookings.length !== 1 ? 's' : ''} affichée
             {filteredBookings.length !== 1 ? 's' : ''}

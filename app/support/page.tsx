@@ -72,7 +72,7 @@ export default function SupportPage() {
       </div>
 
       {/* Sector tabs */}
-      <div className="flex gap-2 border-b border-gray-200 pb-1">
+      <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-1">
         {SECTOR_TABS.map(tab => (
           <button
             key={tab.key}
@@ -90,7 +90,7 @@ export default function SupportPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-500">Total</p>
           <p className="text-2xl font-bold text-gray-900">{disputes.length}</p>
@@ -135,7 +135,7 @@ export default function SupportPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

@@ -121,6 +121,18 @@ const MENU_SECTIONS: NavSection[] = [
   },
 ];
 
+// All registered hrefs, used to avoid false-positive active state on prefix matches
+const ALL_ITEM_HREFS = MENU_SECTIONS.flatMap(s => s.items.map(i => i.href));
+
+function isNavItemActive(pathname: string | null, itemHref: string): boolean {
+  if (!pathname) return false;
+  if (pathname === itemHref) return true;
+  if (itemHref === '/') return false;
+  if (!pathname.startsWith(itemHref + '/')) return false;
+  // Don't mark active if a more-specific registered route also matches (e.g. /transport-requests/live-map)
+  return !ALL_ITEM_HREFS.some(h => h !== itemHref && h.startsWith(itemHref + '/') && pathname.startsWith(h));
+}
+
 function SidebarContent({
   collapsed,
   pendingDrivers,
@@ -136,6 +148,7 @@ function SidebarContent({
 }) {
   const pathname = usePathname();
   const { toggle, closeMobile } = useSidebar();
+  const [hoveredHref, setHoveredHref] = useState<string | null>(null);
 
   const getBadge = (item: NavItem): number => {
     if (item.badgeKey === 'pendingDrivers') return pendingDrivers;
@@ -191,9 +204,13 @@ function SidebarContent({
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href + '/'));
+                const isActive = isNavItemActive(pathname, item.href);
+                const isHovered = hoveredHref === item.href;
                 const badge = getBadge(item);
-                const iconColor = isActive ? 'white' : (section.color ?? '#9CA3AF');
+                const iconColor = isActive || isHovered ? 'white' : (section.color ?? '#9CA3AF');
+
+                const sectionColor = section.color ?? '#00B8A9';
+                const activeBg = isActive ? sectionColor : undefined;
 
                 return (
                   <Link
@@ -201,11 +218,14 @@ function SidebarContent({
                     href={item.href}
                     onClick={closeMobile}
                     title={collapsed ? item.label : undefined}
+                    onMouseEnter={() => setHoveredHref(item.href)}
+                    onMouseLeave={() => setHoveredHref(null)}
+                    style={activeBg ? { backgroundColor: activeBg } : undefined}
                     className={cn(
                       'flex items-center gap-3 py-2.5 rounded-lg transition-colors text-sm',
                       collapsed ? 'justify-center px-0 mx-2' : 'px-4 mx-1',
                       isActive
-                        ? 'bg-primary text-white'
+                        ? 'text-white'
                         : 'text-gray-300 hover:bg-gray-800 hover:text-white',
                     )}
                   >

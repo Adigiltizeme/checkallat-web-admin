@@ -66,7 +66,7 @@ export default function ProductsPage() {
         </p>
       </div>
 
-      <div className="flex gap-4 items-center">
+      <div className="flex gap-3 items-center flex-wrap">
         <input
           type="text"
           placeholder="Rechercher par nom, description..."
@@ -87,7 +87,7 @@ export default function ProductsPage() {
         {fetching && <span className="text-sm text-gray-400">Chargement...</span>}
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
         {loading ? (
           <div className="text-center py-12 text-gray-500">Chargement...</div>
         ) : (

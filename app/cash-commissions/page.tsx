@@ -146,7 +146,7 @@ export default function CashCommissionsPage() {
 
               {/* Détail des transports cash */}
               {expandedId === driver.id && (
-                <div className="border-t border-gray-100">
+                <div className="border-t border-gray-100 overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-100">
                     <thead className="bg-gray-50">
                       <tr>

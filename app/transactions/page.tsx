@@ -515,7 +515,7 @@ export default function TransactionsPage() {
                             </div>
                           </div>
                           {expandedDriverId === driver.id && (
-                            <div className="border-t">
+                            <div className="border-t overflow-x-auto">
                               <table className="min-w-full divide-y divide-gray-100">
                                 <thead className="bg-gray-50">
                                   <tr>{['Date', 'Trajet', 'Brut', `Comm. (${transportRate}%)`, 'Net chauffeur'].map(h => (
@@ -602,7 +602,7 @@ export default function TransactionsPage() {
                             </button>
                           </div>
                           {expandedProId === pro.proId && (
-                            <div className="border-t">
+                            <div className="border-t overflow-x-auto">
                               <table className="min-w-full divide-y divide-gray-100">
                                 <thead className="bg-gray-50">
                                   <tr>{['Date', 'Adresse', 'Prix final', 'Taux', 'Commission', 'Net pro'].map(h => (

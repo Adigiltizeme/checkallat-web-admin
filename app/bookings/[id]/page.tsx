@@ -51,7 +51,7 @@ const CATEGORY_DATA_LABELS: Record<string, string> = {
 
 const URGENCY_LABELS: Record<string, string> = {
   normal: 'Normal',
-  urgent: 'Urgent (+30%)',
+  urgent: 'Urgent',
 };
 
 const TIMESLOT_LABELS: Record<string, string> = {
@@ -75,6 +75,7 @@ export default function BookingDetailPage() {
   const [booking,  setBooking]  = useState<any>(null);
   const [loading,  setLoading]  = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [disputes, setDisputes] = useState<any[]>([]);
 
   const [showStatusModal,      setShowStatusModal]      = useState(false);
   const [selectedStatus,       setSelectedStatus]       = useState('');
@@ -106,9 +107,16 @@ export default function BookingDetailPage() {
       .then((data: any) => { setBooking(data); setLoading(false); })
       .catch((err: any) => { console.error(err); setLoading(false); });
 
+  const loadDisputes = () =>
+    apiClient
+      .get('/admin/disputes', { params: { bookingId } })
+      .then((data: any) => setDisputes(Array.isArray(data) ? data : []))
+      .catch(() => {});
+
   useEffect(() => {
     loadBooking();
-    const interval = setInterval(loadBooking, 5_000);
+    loadDisputes();
+    const interval = setInterval(() => { loadBooking(); loadDisputes(); }, 5_000);
     return () => clearInterval(interval);
   }, [bookingId]);
 
@@ -250,10 +258,10 @@ export default function BookingDetailPage() {
     : [];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
 
       {/* Header */}
-      <div className="flex justify-between items-start flex-wrap gap-4">
+      <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
           <button onClick={() => router.push('/bookings')} className="text-primary hover:underline mb-2 block text-sm">
             ← Retour aux réservations
@@ -365,58 +373,56 @@ export default function BookingDetailPage() {
         </div>
 
         {isTimelineExpanded && (
-          <div className="mt-6 space-y-4">
-            {timeline.map((step, i) => {
-              const isPast    = i < currentIndex;
-              const isCurrent = i === currentIndex;
-              return (
-                <div key={i} className="flex gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 ${
-                    isPast || isCurrent ? 'bg-primary text-white' : 'bg-gray-200'
-                  }`}>
-                    {step.icon}
-                  </div>
-                  <div className="flex-1 pt-1">
-                    <p className={`font-semibold ${isCurrent ? 'text-primary' : isPast ? 'text-gray-700' : 'text-gray-400'}`}>
-                      {step.label}
-                    </p>
-                    {step.time && (
-                      <p className="text-sm text-gray-500">
-                        {format(new Date(step.time), 'dd/MM à HH:mm', { locale: fr })}
+          <div className={`mt-6 ${booking.addressLat && booking.addressLng ? 'grid md:grid-cols-5 gap-6' : ''}`}>
+            {/* Timeline — 2/5 */}
+            <div className={`${booking.addressLat && booking.addressLng ? 'md:col-span-2' : ''} space-y-4`}>
+              {timeline.map((step, i) => {
+                const isPast    = i < currentIndex;
+                const isCurrent = i === currentIndex;
+                return (
+                  <div key={i} className="flex gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 ${
+                      isPast || isCurrent ? 'bg-primary text-white' : 'bg-gray-200'
+                    }`}>
+                      {step.icon}
+                    </div>
+                    <div className="flex-1 pt-1">
+                      <p className={`font-semibold ${isCurrent ? 'text-primary' : isPast ? 'text-gray-700' : 'text-gray-400'}`}>
+                        {step.label}
                       </p>
-                    )}
-                    {isCurrent && booking.status !== 'completed' && (
-                      <span className="text-sm text-primary font-bold flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                        En cours
-                      </span>
-                    )}
+                      {step.time && (
+                        <p className="text-sm text-gray-500">
+                          {format(new Date(step.time), 'dd/MM à HH:mm', { locale: fr })}
+                        </p>
+                      )}
+                      {isCurrent && booking.status !== 'completed' && (
+                        <span className="text-sm text-primary font-bold flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                          En cours
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            {/* Carte — 3/5 */}
+            {booking.addressLat && booking.addressLng && (
+              <div className="md:col-span-3 h-80 md:h-auto min-h-[360px] rounded-lg overflow-hidden border border-gray-100">
+                <BookingDetailMap
+                  bookingId={bookingId}
+                  addressLat={booking.addressLat}
+                  addressLng={booking.addressLng}
+                  address={booking.address ?? ''}
+                  status={booking.status}
+                  proId={booking.proId ?? null}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      {/* Carte d'intervention */}
-      {booking.addressLat && booking.addressLng && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900">🗺️ Carte d'intervention</h2>
-          </div>
-          <div className="h-64">
-            <BookingDetailMap
-              bookingId={bookingId}
-              addressLat={booking.addressLat}
-              addressLng={booking.addressLng}
-              address={booking.address ?? ''}
-              status={booking.status}
-              proId={booking.proId ?? null}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Client + Pro */}
       <div className="grid md:grid-cols-2 gap-6">
@@ -424,7 +430,11 @@ export default function BookingDetailPage() {
           <h2 className="text-lg font-semibold mb-3">👤 Client</h2>
           <p className="font-medium text-gray-900">{clientName}</p>
           {booking.client?.email && <p className="text-sm text-gray-600">{booking.client.email}</p>}
-          {booking.client?.phone && <p className="text-sm text-gray-600">{booking.client.phone}</p>}
+          {booking.client?.phone && (
+            <p className="text-sm text-gray-400 flex items-center gap-1" title="Numéro masqué — système proxy">
+              🔒 {booking.client.phone.replace(/\d(?=\d{4})/g, '•')}
+            </p>
+          )}
         </div>
         <div className="bg-white p-5 rounded-lg shadow">
           <h2 className="text-lg font-semibold mb-3">🛠 Professionnel</h2>
@@ -435,7 +445,11 @@ export default function BookingDetailPage() {
                 <p className="text-sm text-gray-500 italic">{booking.pro.companyName}</p>
               )}
               {proUser?.email && <p className="text-sm text-gray-600">{proUser.email}</p>}
-              {proUser?.phone && <p className="text-sm text-gray-600">{proUser.phone}</p>}
+              {proUser?.phone && (
+                <p className="text-sm text-gray-400 flex items-center gap-1" title="Numéro masqué — système proxy">
+                  🔒 {proUser.phone.replace(/\d(?=\d{4})/g, '•')}
+                </p>
+              )}
             </>
           ) : (
             <p className="text-gray-400 italic text-sm">Aucun pro assigné</p>
@@ -576,6 +590,36 @@ export default function BookingDetailPage() {
         </div>
       )}
 
+      {/* Photos avant intervention (pro) */}
+      {booking.photosBeforeWork?.length > 0 && (
+        <div className="bg-white p-5 rounded-lg shadow">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">🔧 Photos avant intervention</h2>
+          <div className="flex flex-wrap gap-3">
+            {booking.photosBeforeWork.map((url: string, i: number) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                className="block w-20 h-20 rounded-lg overflow-hidden border border-gray-200 hover:opacity-80 hover:ring-2 hover:ring-emerald-400 transition-all flex-shrink-0">
+                <img src={url} alt={`Avant ${i + 1}`} className="w-full h-full object-cover" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Photos après intervention (pro) */}
+      {booking.photosAfterWork?.length > 0 && (
+        <div className="bg-white p-5 rounded-lg shadow">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">✅ Photos après intervention</h2>
+          <div className="flex flex-wrap gap-3">
+            {booking.photosAfterWork.map((url: string, i: number) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                className="block w-20 h-20 rounded-lg overflow-hidden border border-gray-200 hover:opacity-80 hover:ring-2 hover:ring-green-400 transition-all flex-shrink-0">
+                <img src={url} alt={`Après ${i + 1}`} className="w-full h-full object-cover" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Avis */}
       {booking.review && (
         <div className="bg-white p-5 rounded-lg shadow">
@@ -683,6 +727,43 @@ export default function BookingDetailPage() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Litiges associés */}
+      {disputes.length > 0 && (
+        <div className="bg-white p-5 rounded-lg shadow">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">⚖️ Litiges associés ({disputes.length})</h2>
+          <div className="space-y-2">
+            {disputes.map((d: any) => (
+              <Link
+                key={d.id}
+                href={`/disputes/${d.id}`}
+                className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    d.status === 'open'      ? 'bg-red-100 text-red-800'    :
+                    d.status === 'in_review' ? 'bg-yellow-100 text-yellow-800' :
+                    d.status === 'resolved'  ? 'bg-green-100 text-green-800'  :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {d.status === 'open'      ? '🔴 Ouvert'     :
+                     d.status === 'in_review' ? '🟡 En examen'  :
+                     d.status === 'resolved'  ? '✅ Résolu'      : d.status}
+                  </span>
+                  <span className="text-sm text-gray-700 font-medium">{d.category ?? '—'}</span>
+                  <span className="text-xs text-gray-500">
+                    Ouvert par : {d.openedBy === 'client' ? '👤 Client' : '🛠 Pro'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  {d.createdAt && new Date(d.createdAt).toLocaleDateString('fr-FR')}
+                  <span>→</span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
