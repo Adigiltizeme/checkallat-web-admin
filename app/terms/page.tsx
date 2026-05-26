@@ -127,7 +127,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">9. Propriété intellectuelle</h2>
             <p>
-              L'ensemble des éléments de la plateforme CheckAll@t (logo, interface, textes, algorithmes) est protégé par les droits de propriété intellectuelle et appartient exclusivement à CheckAll@t. Toute reproduction, utilisation ou distribution sans autorisation écrite préalable est interdite.
+              L'ensemble des éléments de la plateforme CheckAll@t (logo, interface, textes, algorithmes) est protégé par les droits de propriété intellectuelle et appartient exclusivement à Digiltizème, créateur de CheckAll@t. Toute reproduction, utilisation ou distribution sans autorisation écrite préalable est interdite.
             </p>
           </section>
 
@@ -149,7 +149,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">11. Modifications des CGU</h2>
             <p>
-              CheckAll@t se réserve le droit de modifier les présentes CGU à tout moment. Les modifications entrent en vigueur dès leur publication sur la plateforme. L'utilisation continue de l'application après notification vaut acceptation des nouvelles conditions.
+              Digiltizème se réserve le droit de modifier les présentes CGU à tout moment. Les modifications entrent en vigueur dès leur publication sur la plateforme. L'utilisation continue de l'application après notification vaut acceptation des nouvelles conditions.
             </p>
           </section>
 

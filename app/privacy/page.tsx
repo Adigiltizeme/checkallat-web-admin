@@ -21,7 +21,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">1. Qui sommes-nous ?</h2>
             <p>
-              CheckAll@t est une plateforme de mise en relation entre particuliers et professionnels dans les domaines du transport de déménagement, des services à domicile et de la vente de produits. La plateforme est éditée et exploitée par la société CheckAll@t, dont le responsable du traitement des données est joignable à l'adresse : <strong>support@checkallat.com</strong>.
+              CheckAll@t est une plateforme de mise en relation entre particuliers et professionnels dans les domaines du transport de déménagement, des services à domicile et de la vente de produits. La plateforme est éditée et exploitée par la société Digiltizème, dont le responsable du traitement des données est joignable à l'adresse : <strong>support@checkallat.com</strong>.
             </p>
           </section>
 
