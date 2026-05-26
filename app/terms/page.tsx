@@ -166,7 +166,7 @@ export default function TermsPage() {
       </main>
 
       <footer className="max-w-4xl mx-auto px-6 py-6 text-center text-xs text-gray-400">
-        © 2026 CheckAll@t. Tous droits réservés. —{' '}
+        © 2026 CheckAll@t by <a href="https://digiltizeme-portfolio.vercel.app" className="underline hover:text-gray-600">Digiltizème</a>. Tous droits réservés. —{' '}
         <a href="https://checkallat-web-admin.vercel.app/privacy" className="underline hover:text-gray-600">Politique de confidentialité</a>
       </footer>
     </div>
