@@ -11,7 +11,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isLoginPage = pathname === '/login' || pathname === '/test-login';
-  const isPublicPage = pathname.startsWith('/track');
+  const isPublicPage =
+    pathname.startsWith('/track') ||
+    pathname.startsWith('/privacy') ||
+    pathname.startsWith('/terms');
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {

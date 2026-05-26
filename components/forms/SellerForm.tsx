@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
+import { SingleFileUpload } from '@/components/FileUpload';
 
 interface SellerFormProps {
   seller?: any;
@@ -30,6 +31,17 @@ const CATEGORIES = [
 
 export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
   const [loading, setLoading] = useState(false);
+  const [healthCertRequired, setHealthCertRequired] = useState(false);
+
+  useEffect(() => {
+    apiClient.get<any>('/admin/settings').then((data) => {
+      const zones: any[] = Array.isArray(data?.serviceZones)
+        ? data.serviceZones
+        : JSON.parse(data?.serviceZones || '[]');
+      const anyRequired = zones.some((z: any) => z.requireHealthCertificate && z.enabled);
+      setHealthCertRequired(anyRequired);
+    }).catch(() => {});
+  }, []);
   const [formData, setFormData] = useState({
     // User info
     email: '',
@@ -50,6 +62,8 @@ export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
     offersPickup: true,
     hasBusinessLicense: false,
     licenseNumber: '',
+    logo: '',
+    healthCertificate: '',
     status: 'pending',
   });
 
@@ -73,6 +87,8 @@ export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
         offersPickup: seller.offersPickup !== undefined ? seller.offersPickup : true,
         hasBusinessLicense: seller.hasBusinessLicense || false,
         licenseNumber: seller.licenseNumber || '',
+        logo: seller.logo || '',
+        healthCertificate: seller.healthCertificate || '',
         status: seller.status || 'pending',
       });
     }
@@ -107,6 +123,8 @@ export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
           offersPickup: formData.offersPickup,
           hasBusinessLicense: formData.hasBusinessLicense,
           licenseNumber: formData.licenseNumber,
+          logo: formData.logo || null,
+          healthCertificate: formData.healthCertificate || null,
           status: formData.status,
         });
       } else {
@@ -247,6 +265,14 @@ export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
         </div>
 
         <div className="col-span-2">
+          <SingleFileUpload
+            label="Logo de la boutique"
+            value={formData.logo}
+            onChange={(url) => setFormData({ ...formData, logo: url })}
+          />
+        </div>
+
+        <div className="col-span-2">
           <label className="block text-sm font-medium text-gray-700">Adresse</label>
           <input
             type="text"
@@ -361,6 +387,13 @@ export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
           </div>
         )}
       </div>
+
+      <SingleFileUpload
+        label={`Certificat sanitaire / Hygiène${healthCertRequired ? '' : ' (optionnel — non requis dans toutes les zones)'}`}
+        value={formData.healthCertificate}
+        onChange={(url) => setFormData({ ...formData, healthCertificate: url })}
+        required={healthCertRequired}
+      />
 
       {/* Status */}
       <div>

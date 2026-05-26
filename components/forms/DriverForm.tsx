@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
+import { SingleFileUpload, MultiFileUpload } from '@/components/FileUpload';
 
 interface DriverFormProps {
   driver?: any;
@@ -38,6 +39,11 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
     serviceRadius: 20,
     locationLat: 0,
     locationLng: 0,
+    vehiclePhotos: [] as string[],
+    drivingLicense: '',
+    vehicleInsurance: '',
+    portfolioPhotos: [] as string[],
+    activityDescription: '',
     status: 'pending',
   });
 
@@ -62,6 +68,11 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
         serviceRadius: driver.serviceRadius || 20,
         locationLat: driver.locationLat ?? 0,
         locationLng: driver.locationLng ?? 0,
+        vehiclePhotos: driver.vehiclePhotos || [],
+        drivingLicense: driver.drivingLicense || '',
+        vehicleInsurance: driver.vehicleInsurance || '',
+        portfolioPhotos: driver.portfolioPhotos || [],
+        activityDescription: driver.activityDescription || '',
         status: driver.status || 'pending',
       });
     }
@@ -88,6 +99,11 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
           serviceRadius: formData.serviceRadius,
           locationLat: formData.locationLat || null,
           locationLng: formData.locationLng || null,
+          vehiclePhotos: formData.vehiclePhotos,
+          drivingLicense: formData.drivingLicense || null,
+          vehicleInsurance: formData.vehicleInsurance || null,
+          portfolioPhotos: formData.portfolioPhotos,
+          activityDescription: formData.activityDescription || null,
           status: formData.status,
         });
       } else {
@@ -340,6 +356,58 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
             />
             <span className="ml-2 text-sm text-gray-700">Matériel d'emballage</span>
           </label>
+        </div>
+      </div>
+
+      {/* Documents & Photos */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-800 border-b pb-1">Documents & Photos</h3>
+
+        <MultiFileUpload
+          label="Photos du véhicule"
+          values={formData.vehiclePhotos}
+          onChange={(urls) => setFormData({ ...formData, vehiclePhotos: urls })}
+          max={5}
+          required
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <SingleFileUpload
+            label="Permis de conduire"
+            value={formData.drivingLicense}
+            onChange={(url) => setFormData({ ...formData, drivingLicense: url })}
+            required
+          />
+          <SingleFileUpload
+            label="Document d'immatriculation du véhicule"
+            value={formData.vehicleInsurance}
+            onChange={(url) => setFormData({ ...formData, vehicleInsurance: url })}
+            required
+          />
+        </div>
+      </div>
+
+      {/* Vitrine */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-800 border-b pb-1">Vitrine</h3>
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 text-xs text-yellow-800">
+          Toute transaction ou prise de contact en dehors de CheckAll@t est interdite.
+        </div>
+        <MultiFileUpload
+          label="Photos d'activité (max 3)"
+          values={formData.portfolioPhotos}
+          onChange={(urls) => setFormData({ ...formData, portfolioPhotos: urls })}
+          max={3}
+        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Description de l'activité</label>
+          <textarea
+            value={formData.activityDescription}
+            onChange={(e) => setFormData({ ...formData, activityDescription: e.target.value })}
+            rows={3}
+            placeholder="Décrivez l'activité du chauffeur..."
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+          />
         </div>
       </div>
 

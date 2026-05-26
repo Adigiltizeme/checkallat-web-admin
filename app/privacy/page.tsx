@@ -125,7 +125,7 @@ export default function PrivacyPage() {
 
       <footer className="max-w-4xl mx-auto px-6 py-6 text-center text-xs text-gray-400">
         © 2026 CheckAll@t. Tous droits réservés. —{' '}
-        <a href="/terms" className="underline hover:text-gray-600">Conditions d'utilisation</a>
+        <a href="https://checkallat-web-admin.vercel.app/terms" className="underline hover:text-gray-600">Conditions d'utilisation</a>
       </footer>
     </div>
   );

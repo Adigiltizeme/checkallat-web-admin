@@ -12,6 +12,7 @@ interface ServiceZone {
   countryCode: string;
   currency?: string;
   enabled: boolean;
+  requireHealthCertificate?: boolean;
 }
 
 interface ServiceZonesModalProps {
@@ -194,6 +195,22 @@ export function ServiceZonesModal({ isOpen, onClose, zones, onSave }: ServiceZon
                     placeholder="القاهرة"
                   />
                 </div>
+              </div>
+
+              {/* Réglementation locale */}
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <p className="text-xs font-medium text-gray-600 mb-2">Réglementation locale</p>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={zone.requireHealthCertificate ?? false}
+                    onChange={(e) => updateZone(zone.id, 'requireHealthCertificate', e.target.checked)}
+                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Certificat sanitaire obligatoire pour les vendeurs
+                  </span>
+                </label>
               </div>
             </div>
           ))}

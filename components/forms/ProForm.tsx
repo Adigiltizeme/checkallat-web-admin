@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
+import { MultiFileUpload } from '@/components/FileUpload';
 
 interface ProFormProps {
   pro?: any; // Si fourni, mode édition. Sinon, mode création
@@ -35,6 +36,7 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
     serviceAreaRadius: 10,
     serviceAreaCenterLat: 0,
     serviceAreaCenterLng: 0,
+    portfolioPhotos: [] as string[],
   });
   const [loading, setLoading] = useState(false);
 
@@ -55,6 +57,7 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
         serviceAreaRadius: pro.serviceAreaRadius ?? 10,
         serviceAreaCenterLat: pro.serviceAreaCenterLat ?? 0,
         serviceAreaCenterLng: pro.serviceAreaCenterLng ?? 0,
+        portfolioPhotos: pro.portfolioPhotos || [],
       });
     }
   }, [pro]);
@@ -76,6 +79,7 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
           serviceAreaRadius: formData.serviceAreaRadius,
           serviceAreaCenterLat: formData.serviceAreaCenterLat || null,
           serviceAreaCenterLng: formData.serviceAreaCenterLng || null,
+          portfolioPhotos: formData.portfolioPhotos,
         });
         alert('Professionnel modifié avec succès');
       } else {
@@ -325,6 +329,20 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
         <p className="text-xs text-gray-400 mt-1">
           Laisser à 0 si l'adresse sera définie par le prestataire lors de sa première connexion.
         </p>
+      </div>
+
+      {/* Vitrine */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700 border-b pb-1">Vitrine</h3>
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 text-xs text-yellow-800">
+          Toute transaction ou prise de contact en dehors de CheckAll@t est interdite.
+        </div>
+        <MultiFileUpload
+          label="Photos d'activité (max 3)"
+          values={formData.portfolioPhotos}
+          onChange={(urls) => setFormData({ ...formData, portfolioPhotos: urls })}
+          max={3}
+        />
       </div>
 
       {/* Boutons */}
