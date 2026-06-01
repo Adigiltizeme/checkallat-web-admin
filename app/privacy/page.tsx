@@ -21,20 +21,27 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">1. Qui sommes-nous ?</h2>
             <p>
-              CheckAll@t est une plateforme de mise en relation entre particuliers et professionnels dans les domaines du transport de déménagement, des services à domicile et de la vente de produits. La plateforme est éditée et exploitée par la société Digiltizème, dont le responsable du traitement des données est joignable à l'adresse : <strong>support@checkallat.com</strong>.
+              CheckAll@t est une plateforme de mise en relation entre utilisateurs, prestataires, vendeurs et partenaires dans différents domaines de services et de produits. La plateforme est éditée et exploitée par Digiltizème, qui agit en qualité de responsable du traitement des données personnelles collectées dans le cadre de l’utilisation du service.
+            </p>
+            <p className="mt-2">
+              Pour toute question relative à la protection des données, vous pouvez nous contacter à l’adresse : <strong>privacy@checkallat.com</strong>.
             </p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">2. Données collectées</h2>
-            <p className="mb-2">Nous collectons les données suivantes lors de votre utilisation de l'application :</p>
+            <p className="mb-2">
+              Nous collectons uniquement les données nécessaires au fonctionnement de la plateforme, à la sécurité des utilisateurs et à la conformité légale, notamment :
+            </p>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Données d'identité :</strong> prénom, nom, adresse e-mail, numéro de téléphone.</li>
-              <li><strong>Données de localisation :</strong> position GPS en temps réel (uniquement lorsque l'application est en cours d'utilisation et avec votre consentement explicite).</li>
-              <li><strong>Données de transaction :</strong> historique des commandes, réservations, transports et paiements.</li>
-              <li><strong>Données professionnelles :</strong> pour les chauffeurs et prestataires, informations sur le véhicule, documents d'identité, photos de profil et certifications.</li>
-              <li><strong>Données de communication :</strong> messages échangés via la messagerie intégrée de la plateforme.</li>
-              <li><strong>Données techniques :</strong> adresse IP, type d'appareil, version du système d'exploitation, journaux d'accès et rapports d'erreurs.</li>
+              <li><strong>Données d’identité :</strong> prénom, nom, adresse e-mail, numéro de téléphone, photo de profil.</li>
+              <li><strong>Données de compte :</strong> identifiants, préférences, langue, rôle utilisateur, paramètres du compte.</li>
+              <li><strong>Données de localisation :</strong> position GPS lorsque cela est nécessaire au service et avec consentement lorsque la loi l’exige.</li>
+              <li><strong>Données de transaction :</strong> commandes, réservations, paiements, remboursements, commissions, historique des opérations.</li>
+              <li><strong>Données professionnelles :</strong> informations liées au véhicule, à l’activité, aux documents justificatifs et à la validation du profil.</li>
+              <li><strong>Données de communication :</strong> messages échangés via la messagerie intégrée, support et avis.</li>
+              <li><strong>Données techniques :</strong> adresse IP, appareil utilisé, système d’exploitation, journaux, identifiants techniques, rapports d’erreurs.</li>
+              <li><strong>Données de contenu :</strong> photos, documents et autres fichiers transmis volontairement dans le cadre du service.</li>
             </ul>
           </section>
 
@@ -43,83 +50,114 @@ export default function PrivacyPage() {
             <p className="mb-2">Vos données sont utilisées pour :</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Créer et gérer votre compte utilisateur.</li>
-              <li>Faciliter la mise en relation entre clients et prestataires/chauffeurs.</li>
-              <li>Traiter les paiements et gérer les transactions financières.</li>
-              <li>Afficher votre position sur la carte en temps réel lors d'une prestation en cours.</li>
-              <li>Envoyer des notifications relatives à votre activité sur la plateforme.</li>
-              <li>Prévenir la fraude et assurer la sécurité de la plateforme.</li>
-              <li>Améliorer nos services grâce à des analyses agrégées et anonymisées.</li>
-              <li>Respecter nos obligations légales et réglementaires.</li>
+              <li>Permettre la mise en relation entre utilisateurs et prestataires, vendeurs ou partenaires.</li>
+              <li>Traiter les paiements, remboursements, commissions et reversements.</li>
+              <li>Assurer le bon fonctionnement des modules proposés par CheckAll@t.</li>
+              <li>Afficher certaines informations de géolocalisation lorsque cela est nécessaire au service.</li>
+              <li>Vous envoyer des notifications liées à vos réservations, messages ou activités sur la plateforme.</li>
+              <li>Prévenir la fraude, sécuriser la plateforme et détecter les usages abusifs.</li>
+              <li>Améliorer nos services grâce à des analyses statistiques agrégées et anonymisées.</li>
+              <li>Répondre à nos obligations légales, comptables, fiscales et réglementaires.</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">4. Partage avec des tiers</h2>
-            <p className="mb-2">Nous faisons appel à des prestataires de services tiers pour faire fonctionner la plateforme. Ces partenaires traitent vos données uniquement dans le cadre des missions qui leur sont confiées :</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Stripe</strong> — traitement des paiements par carte bancaire (aucune donnée de carte n'est stockée sur nos serveurs).</li>
-              <li><strong>Twilio</strong> — envoi de SMS de vérification et de notifications.</li>
-              <li><strong>Mapbox</strong> — affichage des cartes, calcul d'itinéraires et géocodage d'adresses.</li>
-              <li><strong>Cloudinary</strong> — hébergement et optimisation des photos de profil et des documents.</li>
-              <li><strong>Sentry</strong> — surveillance des erreurs techniques et amélioration de la stabilité de l'application.</li>
-              <li><strong>Firebase / Google</strong> — envoi de notifications push sur appareils iOS et Android.</li>
-            </ul>
-            <p className="mt-2">Nous ne vendons jamais vos données personnelles à des tiers à des fins commerciales.</p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">5. Conservation des données</h2>
-            <p>
-              Vos données sont conservées pendant toute la durée de votre relation avec CheckAll@t, augmentée des délais légaux applicables (généralement 5 ans pour les données comptables et transactionnelles). En cas de suppression de votre compte, vos données personnelles sont anonymisées dans un délai de 30 jours, à l'exception des données nécessaires au respect d'obligations légales.
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">4. Base légale du traitement</h2>
+            <p className="mb-2">
+              Selon les cas, vos données peuvent être traitées sur la base :
             </p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>De l’exécution d’un contrat ou de mesures précontractuelles.</li>
+              <li>De votre consentement, notamment pour certaines fonctionnalités optionnelles.</li>
+              <li>Du respect d’obligations légales.</li>
+              <li>De l’intérêt légitime de CheckAll@t, par exemple pour la sécurité, la prévention de la fraude ou l’amélioration du service.</li>
+            </ul>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">6. Vos droits</h2>
-            <p className="mb-2">Conformément à la réglementation applicable, vous disposez des droits suivants :</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">5. Partage avec des tiers</h2>
+            <p className="mb-2">
+              Nous pouvons faire appel à des prestataires techniques et partenaires de confiance pour faire fonctionner la plateforme. Ils n’utilisent vos données que dans le cadre des missions qui leur sont confiées.
+            </p>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Droit d'accès :</strong> obtenir une copie des données vous concernant.</li>
-              <li><strong>Droit de rectification :</strong> corriger des données inexactes ou incomplètes.</li>
-              <li><strong>Droit à l'effacement :</strong> demander la suppression de vos données (sous réserve des obligations légales).</li>
-              <li><strong>Droit d'opposition :</strong> vous opposer à certains traitements, notamment à des fins de prospection.</li>
-              <li><strong>Droit à la portabilité :</strong> recevoir vos données dans un format structuré et lisible par machine.</li>
-              <li><strong>Droit de retirer votre consentement</strong> à tout moment pour les traitements basés sur celui-ci (ex. : géolocalisation).</li>
+              <li><strong>Stripe</strong> — traitement des paiements.</li>
+              <li><strong>Twilio</strong> — envoi de SMS, OTP et notifications de vérification.</li>
+              <li><strong>Mapbox</strong> — cartographie, géocodage et calcul d’itinéraires.</li>
+              <li><strong>Cloudinary</strong> — stockage et optimisation d’images et de fichiers.</li>
+              <li><strong>Sentry</strong> — surveillance des erreurs techniques et amélioration de la stabilité.</li>
+              <li><strong>Firebase / Google</strong> — notifications push et fonctionnalités techniques associées.</li>
             </ul>
             <p className="mt-2">
-              Pour exercer vos droits, contactez-nous à : <strong>privacy@checkallat.com</strong>. Nous répondrons dans un délai de 30 jours.
+              Nous ne vendons jamais vos données personnelles à des tiers à des fins commerciales.
             </p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">7. Sécurité des données</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">6. Transferts hors de votre pays</h2>
             <p>
-              Nous mettons en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données contre tout accès non autorisé, toute perte ou toute divulgation. Les communications entre votre appareil et nos serveurs sont chiffrées via HTTPS/TLS. Les mots de passe sont stockés sous forme hachée et ne sont jamais lisibles, même par nos équipes.
+              Certains prestataires techniques peuvent être situés dans d’autres pays. Lorsque cela est nécessaire, nous prenons des mesures appropriées pour encadrer ces transferts et protéger vos données conformément à la réglementation applicable.
             </p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">8. Cookies et technologies similaires</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">7. Conservation des données</h2>
             <p>
-              L'application mobile n'utilise pas de cookies. Le panneau d'administration web utilise uniquement un cookie de session sécurisé nécessaire à votre authentification, sans tracking publicitaire.
+              Vos données sont conservées pendant la durée nécessaire à la fourniture du service, puis archivées ou supprimées selon les obligations légales applicables. Les durées de conservation peuvent varier selon la nature des données : compte utilisateur, données de transaction, contenus échangés, documents de vérification, journaux techniques ou obligations comptables.
+            </p>
+            <p className="mt-2">
+              Lorsqu’un compte est supprimé, certaines données peuvent être conservées temporairement afin de répondre à des obligations légales, fiscales, comptables, de sécurité ou de résolution de litiges.
             </p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">9. Modifications de la politique</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">8. Vos droits</h2>
+            <p className="mb-2">
+              Conformément à la réglementation applicable, vous disposez notamment des droits suivants :
+            </p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Droit d’accès à vos données.</li>
+              <li>Droit de rectification des données inexactes ou incomplètes.</li>
+              <li>Droit à l’effacement, dans les limites légales applicables.</li>
+              <li>Droit d’opposition à certains traitements.</li>
+              <li>Droit à la limitation du traitement.</li>
+              <li>Droit à la portabilité, lorsque cela est applicable.</li>
+              <li>Droit de retirer votre consentement à tout moment pour les traitements fondés sur celui-ci.</li>
+              <li>Droit d’introduire une réclamation auprès de l’autorité compétente.</li>
+            </ul>
+            <p className="mt-2">
+              Pour exercer vos droits, contactez-nous à : <strong>privacy@checkallat.com</strong>.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">9. Sécurité des données</h2>
             <p>
-              Nous nous réservons le droit de modifier cette politique à tout moment. Toute modification significative vous sera notifiée par e-mail ou via une notification dans l'application au moins 15 jours avant son entrée en vigueur.
+              Nous mettons en œuvre des mesures techniques et organisationnelles adaptées pour protéger vos données contre la perte, la modification, l’accès non autorisé ou la divulgation. Les échanges avec nos serveurs sont protégés par chiffrement, et les mots de passe sont stockés sous forme hachée de manière sécurisée.
             </p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">10. Contact</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">10. Cookies et technologies similaires</h2>
+            <p>
+              L’application mobile n’utilise pas de cookies au sens classique du terme. Si un site web ou un panneau d’administration utilise des cookies ou traceurs, seuls les cookies strictement nécessaires au fonctionnement du service sont activés par défaut, sauf consentement supplémentaire requis.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">11. Modifications de la politique</h2>
+            <p>
+              Nous pouvons modifier cette politique afin de refléter des évolutions légales, techniques ou fonctionnelles. En cas de changement important, une notification peut être affichée dans l’application ou envoyée par e-mail lorsque cela est approprié.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">12. Contact</h2>
             <p>
               Pour toute question relative à cette politique ou à vos données personnelles :<br />
-              <strong>Email :</strong> privacy@checkallat.com<br />
-              <strong>Support général :</strong> support@checkallat.com
+              <strong>Email confidentialité :</strong> privacy@checkallat.com<br />
+              <strong>Email support :</strong> support@checkallat.com
             </p>
           </section>
-
         </div>
       </main>
 
