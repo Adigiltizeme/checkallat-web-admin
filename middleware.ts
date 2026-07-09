@@ -7,8 +7,9 @@ const PUBLIC_PREFIXES = ['/track', '/privacy', '/terms'];
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Laisser passer les routes publiques et assets Next.js
+  // Laisser passer les assets statiques (public/) et les routes publiques
   if (
+    /\.(png|jpg|jpeg|svg|ico|webp|gif|woff2?|ttf|eot|otf|css|js|map)$/.test(pathname) ||
     PUBLIC_PATHS.includes(pathname) ||
     PUBLIC_PREFIXES.some(p => pathname.startsWith(p)) ||
     pathname.startsWith('/_next') ||

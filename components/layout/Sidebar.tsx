@@ -21,7 +21,6 @@ import {
   MapPin,
   Headphones,
   ChevronLeft,
-  ChevronRight,
   CalendarCheck,
   Briefcase,
   Lightbulb,
@@ -167,19 +166,30 @@ function SidebarContent({
     >
       {/* Logo + toggle */}
       <div className={cn('flex items-center h-16 border-b border-gray-800 flex-shrink-0', collapsed ? 'justify-center px-0' : 'justify-between px-4')}>
-        {!collapsed && (
-          <div>
-            <h1 className="text-lg font-bold text-primary leading-tight">CheckAll@t</h1>
-            <p className="text-xs text-gray-400">Admin Panel</p>
-          </div>
+        {collapsed ? (
+          <button onClick={() => { toggle(); closeMobile(); }} title="Déployer" className="p-1 rounded-lg hover:bg-gray-800 transition-colors">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.png" alt="CheckAll@t" width={34} height={34} className="rounded-lg" />
+          </button>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 min-w-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon.png" alt="CheckAll@t" width={34} height={34} className="flex-shrink-0 rounded-lg" />
+              <div className="min-w-0">
+                <h1 className="text-lg font-bold text-primary leading-tight">CheckAll@t</h1>
+                <p className="text-xs text-gray-400">Admin Panel</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { toggle(); closeMobile(); }}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors flex-shrink-0"
+              title="Réduire"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </>
         )}
-        <button
-          onClick={() => { toggle(); closeMobile(); }}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors flex-shrink-0"
-          title={collapsed ? 'Déployer' : 'Réduire'}
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
       </div>
 
       {/* Nav */}
@@ -282,7 +292,7 @@ export function Sidebar() {
   useEffect(() => {
     const notify = (title: string, body: string, tag: string) => {
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, { body, icon: '/favicon.ico', tag });
+        new Notification(title, { body, icon: '/icon.png', tag });
       }
     };
 

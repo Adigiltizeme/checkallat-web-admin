@@ -1,11 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { login } from '@/lib/auth';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [credentials, setCredentials] = useState({
     identifier: '',
     password: '',
@@ -37,10 +35,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-lg">
         <div>
-          <h1 className="text-3xl font-bold text-center text-primary">
-            CheckAll@t
-          </h1>
-          <h2 className="mt-6 text-center text-2xl font-bold text-gray-900">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="CheckAll@t" style={{ display: 'block', margin: '0 auto', width: '192px', height: 'auto' }} />
+          <h2 className="mt-4 text-center text-2xl font-bold text-gray-900">
             Administration
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
@@ -63,12 +60,13 @@ export default function LoginPage() {
               <input
                 id="identifier"
                 name="identifier"
-                type="text"
+                type="email"
+                autoComplete="email"
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
                 value={credentials.identifier}
                 onChange={(e) =>
-                  setCredentials({ ...credentials, identifier: e.target.value })
+                  setCredentials(prev => ({ ...prev, identifier: e.target.value ?? '' }))
                 }
               />
             </div>
@@ -81,11 +79,12 @@ export default function LoginPage() {
                 id="password"
                 name="password"
                 type="password"
+                autoComplete="current-password"
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
                 value={credentials.password}
                 onChange={(e) =>
-                  setCredentials({ ...credentials, password: e.target.value })
+                  setCredentials(prev => ({ ...prev, password: e.target.value ?? '' }))
                 }
               />
             </div>

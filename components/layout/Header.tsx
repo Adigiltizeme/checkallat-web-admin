@@ -61,6 +61,9 @@ export function Header() {
         >
           <Menu className="h-5 w-5" />
         </button>
+        {/* Logo — mobile only (desktop: shown in sidebar) */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon.png" alt="CheckAll@t" width={28} height={28} className="md:hidden rounded flex-shrink-0" />
         <h2 className="text-lg md:text-xl font-semibold text-gray-800 truncate">
           Bienvenue, {user?.firstName || 'Admin'}
         </h2>
