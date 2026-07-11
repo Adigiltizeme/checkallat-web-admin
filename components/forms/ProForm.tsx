@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
-import { MultiFileUpload } from '@/components/FileUpload';
 
 interface ProFormProps {
   pro?: any; // Si fourni, mode édition. Sinon, mode création
@@ -68,7 +67,7 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
 
     try {
       if (pro) {
-        // Mode édition
+        // Mode édition — portfolioPhotos géré par le pro via l'app mobile
         await apiClient.patch(`/admin/pros/${pro.id}`, {
           companyName: formData.companyName,
           bio: formData.bio,
@@ -79,17 +78,17 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
           serviceAreaRadius: formData.serviceAreaRadius,
           serviceAreaCenterLat: formData.serviceAreaCenterLat || null,
           serviceAreaCenterLng: formData.serviceAreaCenterLng || null,
-          portfolioPhotos: formData.portfolioPhotos,
         });
         alert('Professionnel modifié avec succès');
       } else {
-        // Mode création
+        // Mode création — portfolioPhotos non applicable à la création admin
         if (!formData.password) {
           alert('Le mot de passe est requis pour créer un nouveau professionnel');
           setLoading(false);
           return;
         }
-        await apiClient.post('/admin/pros', formData);
+        const { portfolioPhotos: _photos, ...createPayload } = formData;
+        await apiClient.post('/admin/pros', createPayload);
         alert('Professionnel créé avec succès');
       }
       onSuccess();
@@ -337,12 +336,20 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 text-xs text-yellow-800">
           Toute transaction ou prise de contact en dehors de CheckAll@t est interdite.
         </div>
-        <MultiFileUpload
-          label="Photos d'activité (max 3)"
-          values={formData.portfolioPhotos}
-          onChange={(urls) => setFormData({ ...formData, portfolioPhotos: urls })}
-          max={3}
-        />
+        {pro && formData.portfolioPhotos.length > 0 ? (
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              Photos d'activité ({formData.portfolioPhotos.length}/3) — gérées par le prestataire
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              {formData.portfolioPhotos.map((url, i) => (
+                <img key={i} src={url} alt={`Photo ${i + 1}`} className="w-24 h-24 object-cover rounded-md border border-gray-200" />
+              ))}
+            </div>
+          </div>
+        ) : pro ? (
+          <p className="text-sm text-gray-400 italic">Aucune photo d'activité — le prestataire peut en ajouter via l'app.</p>
+        ) : null}
       </div>
 
       {/* Boutons */}
