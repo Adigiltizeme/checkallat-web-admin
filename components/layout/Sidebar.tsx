@@ -24,6 +24,7 @@ import {
   CalendarCheck,
   Briefcase,
   Lightbulb,
+  MessageSquare,
 } from 'lucide-react';
 
 type NavItem = {
@@ -104,6 +105,13 @@ const MENU_SECTIONS: NavSection[] = [
     items: [
       { href: '/reviews',   label: 'Avis',             icon: Star },
       { href: '/disputes',  label: 'Litiges',          icon: AlertCircle },
+    ],
+  },
+  {
+    title: 'Surveillance',
+    color: '#EF4444',
+    items: [
+      { href: '/conversations', label: 'Messages & Appels', icon: MessageSquare },
     ],
   },
   {

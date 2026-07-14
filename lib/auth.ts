@@ -28,15 +28,16 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
     password: credentials.password,
   });
 
-  // Store tokens
   if (typeof window !== 'undefined') {
-    localStorage.setItem('accessToken', response.data.accessToken);
+    // Tokens : cookie uniquement (localStorage vulnérable aux XSS)
+    // SameSite=Strict protège contre le CSRF ; Secure force HTTPS en production
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `accessToken=${response.data.accessToken}; path=/; SameSite=Strict; max-age=900${secure}`;
     if (response.data.refreshToken) {
-      localStorage.setItem('refreshToken', response.data.refreshToken);
+      document.cookie = `refreshToken=${response.data.refreshToken}; path=/; SameSite=Strict; max-age=604800${secure}`;
     }
+    // Données de profil non-sensibles (nom, rôle) — pas de credential, localStorage OK
     localStorage.setItem('user', JSON.stringify(response.data.user));
-    // Cookie pour le middleware Next.js (protection server-side)
-    document.cookie = `accessToken=${response.data.accessToken}; path=/; SameSite=Strict`;
   }
 
   return response.data;
@@ -50,28 +51,23 @@ export function logout(autoLogout: boolean = false) {
   }
 
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    // Supprimer le cookie de session
     document.cookie = 'accessToken=; path=/; max-age=0; SameSite=Strict';
+    document.cookie = 'refreshToken=; path=/; max-age=0; SameSite=Strict';
+    localStorage.removeItem('user');
     window.location.href = '/login';
   }
 }
 
 export function getAccessToken(): string | null {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('accessToken');
-  }
-  return null;
+  if (typeof window === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
+  return match ? match[1] : null;
 }
 
 export function getUser(): any | null {
-  if (typeof window !== 'undefined') {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
-  }
-  return null;
+  if (typeof window === 'undefined') return null;
+  const user = localStorage.getItem('user');
+  return user ? JSON.parse(user) : null;
 }
 
 export function isAuthenticated(): boolean {

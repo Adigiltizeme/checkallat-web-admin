@@ -121,6 +121,8 @@ export default function TransactionsPage() {
   const [proData, setProData] = useState<ProCommissionData | null>(null);
   const [loadingPros, setLoadingPros] = useState(false);
   const [expandedProId, setExpandedProId] = useState<string | null>(null);
+  const [collectingProId, setCollectingProId] = useState<string | null>(null);
+  const [blockingProId, setBlockingProId] = useState<string | null>(null);
 
   const { formatCurrency } = useCurrency();
   const { settings } = useSettings();
@@ -247,6 +249,29 @@ export default function TransactionsPage() {
       setBlockingId(driver.id);
       try { await apiClient.patch(`/admin/users/${driver.user.id}/suspend-cash`); loadDriverCommissions(); }
       catch { alert('Erreur'); } finally { setBlockingId(null); }
+    }
+  };
+
+  // ── Pro actions ────────────────────────────────────────────────────────────
+  const handleCollectPro = async (pro: ProCommission) => {
+    if (!confirm(`Confirmer la collecte de ${formatCurrency(pro.totalCommission)} auprès de ${pro.proName} ?`)) return;
+    setCollectingProId(pro.proId);
+    try { await apiClient.post(`/admin/pros/${pro.proId}/collect-commission`, {}); loadProCommissions(); }
+    catch { alert('Erreur lors de l\'encaissement'); }
+    finally { setCollectingProId(null); }
+  };
+
+  const handleBlockPro = async (pro: ProCommission) => {
+    if (pro.isCashRestricted) {
+      if (!confirm(`Lever la restriction cash pour ${pro.proName} ?`)) return;
+      setBlockingProId(pro.proId);
+      try { await apiClient.post(`/admin/pros/${pro.proId}/lift-cash-restriction`, {}); loadProCommissions(); }
+      catch { alert('Erreur'); } finally { setBlockingProId(null); }
+    } else {
+      if (!confirm(`Restreindre ${pro.proName} aux paiements in-app ?`)) return;
+      setBlockingProId(pro.proId);
+      try { await apiClient.post(`/admin/pros/${pro.proId}/restrict-cash`, {}); loadProCommissions(); }
+      catch { alert('Erreur'); } finally { setBlockingProId(null); }
     }
   };
 
@@ -596,10 +621,20 @@ export default function TransactionsPage() {
                                 <div className="text-xs text-gray-400">réservation(s)</div>
                               </div>
                             </div>
-                            <button onClick={() => setExpandedProId(expandedProId === pro.proId ? null : pro.proId)}
-                              className="px-3 py-1.5 text-sm text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50">
-                              {expandedProId === pro.proId ? 'Masquer' : `Détail (${pro.bookings.length})`}
-                            </button>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button onClick={() => setExpandedProId(expandedProId === pro.proId ? null : pro.proId)}
+                                className="px-3 py-1.5 text-sm text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50">
+                                {expandedProId === pro.proId ? 'Masquer' : `Détail (${pro.bookings.length})`}
+                              </button>
+                              <button onClick={() => handleBlockPro(pro)} disabled={blockingProId === pro.proId}
+                                className={`px-3 py-1.5 text-sm rounded-md disabled:opacity-50 ${pro.isCashRestricted ? 'text-gray-700 border border-gray-300 bg-gray-100 hover:bg-gray-200' : 'text-orange-700 border border-orange-300 bg-orange-50 hover:bg-orange-100'}`}>
+                                {blockingProId === pro.proId ? '…' : pro.isCashRestricted ? '🔓 Lever restriction' : '🔒 Restreindre cash'}
+                              </button>
+                              <button onClick={() => handleCollectPro(pro)} disabled={collectingProId === pro.proId}
+                                className="px-3 py-1.5 text-sm text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50">
+                                {collectingProId === pro.proId ? '…' : '✓ Marquer encaissé'}
+                              </button>
+                            </div>
                           </div>
                           {expandedProId === pro.proId && (
                             <div className="border-t overflow-x-auto">

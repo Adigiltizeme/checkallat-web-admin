@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 
 interface CommissionRates {
@@ -20,6 +20,10 @@ interface CommissionRatesModalProps {
 export function CommissionRatesModal({ isOpen, onClose, rates, onSave }: CommissionRatesModalProps) {
   const [editedRates, setEditedRates] = useState<CommissionRates>(rates);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) setEditedRates(rates);
+  }, [isOpen, rates]);
 
   const handleSave = async () => {
     setSaving(true);

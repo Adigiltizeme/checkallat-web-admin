@@ -14,12 +14,20 @@ class ApiClient {
       },
     });
 
-    // Request interceptor (add token)
+    // Request interceptor (add token + CSRF header)
     this.client.interceptors.request.use(
       (config) => {
         const token = getAccessToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+        }
+        // Protection CSRF : les requêtes cross-site ne peuvent pas envoyer
+        // de headers personnalisés — ce header suffit à bloquer les attaques CSRF.
+        const isMutation = ['post', 'put', 'patch', 'delete'].includes(
+          (config.method ?? '').toLowerCase(),
+        );
+        if (isMutation) {
+          config.headers['X-Admin-Request'] = '1';
         }
         return config;
       },
