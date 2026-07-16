@@ -32,7 +32,7 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
     // Tokens : cookie uniquement (localStorage vulnérable aux XSS)
     // SameSite=Strict protège contre le CSRF ; Secure force HTTPS en production
     const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = `accessToken=${response.data.accessToken}; path=/; SameSite=Strict; max-age=900${secure}`;
+    document.cookie = `accessToken=${response.data.accessToken}; path=/; SameSite=Strict; max-age=604800${secure}`;
     if (response.data.refreshToken) {
       document.cookie = `refreshToken=${response.data.refreshToken}; path=/; SameSite=Strict; max-age=604800${secure}`;
     }
@@ -73,7 +73,7 @@ export function getRefreshToken(): string | null {
 export function setAccessToken(token: string): void {
   if (typeof window === 'undefined') return;
   const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `accessToken=${token}; path=/; SameSite=Strict; max-age=900${secure}`;
+  document.cookie = `accessToken=${token}; path=/; SameSite=Strict; max-age=604800${secure}`;
 }
 
 export function getUser(): any | null {
