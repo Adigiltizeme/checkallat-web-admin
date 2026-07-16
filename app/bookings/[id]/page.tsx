@@ -122,7 +122,7 @@ export default function BookingDetailPage() {
 
   // Countdown pour réservations immédiates en attente
   useEffect(() => {
-    if (!booking || booking.status !== 'pending' || booking.bookingType !== 'immediate') {
+    if (!booking || booking.status !== 'pending' || booking.bookingType !== 'immediate' || booking.assignmentType !== 'auto') {
       setSecondsLeft(null);
       return;
     }
@@ -137,7 +137,7 @@ export default function BookingDetailPage() {
       });
     }, 1000);
     return () => clearInterval(tick);
-  }, [booking?.id, booking?.status, booking?.bookingType, booking?.createdAt]);
+  }, [booking?.id, booking?.status, booking?.bookingType, booking?.assignmentType, booking?.createdAt]);
 
   const searchPros = async (query: string) => {
     setProSearchQuery(query);
@@ -283,7 +283,7 @@ export default function BookingDetailPage() {
       </div>
 
       {/* Countdown — réservations immédiates en attente uniquement */}
-      {booking.status === 'pending' && booking.bookingType === 'immediate' && secondsLeft !== null && (
+      {booking.status === 'pending' && booking.bookingType === 'immediate' && booking.assignmentType === 'auto' && secondsLeft !== null && (
         <div className={`p-4 rounded-lg border flex items-center gap-4 ${
           secondsLeft === 0
             ? 'bg-red-50 border-red-300'
