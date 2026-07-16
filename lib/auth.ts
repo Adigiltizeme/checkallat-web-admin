@@ -64,6 +64,18 @@ export function getAccessToken(): string | null {
   return match ? match[1] : null;
 }
 
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|;\s*)refreshToken=([^;]+)/);
+  return match ? match[1] : null;
+}
+
+export function setAccessToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `accessToken=${token}; path=/; SameSite=Strict; max-age=900${secure}`;
+}
+
 export function getUser(): any | null {
   if (typeof window === 'undefined') return null;
   const user = localStorage.getItem('user');
