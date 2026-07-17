@@ -260,7 +260,7 @@ export default function ProsPage() {
                       className="w-4 h-4 text-primary border-gray-300 rounded cursor-pointer"
                     />
                   </th>
-                  {['Prestataire', 'Catégories', 'Segment', 'Note', 'Statut', 'Actions'].map(h => (
+                  {['Prestataire', 'Catégories', 'Segment', 'Note', 'Statut', 'Disponible', 'Actions'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {h}
                     </th>
@@ -287,6 +287,7 @@ export default function ProsPage() {
                           {pro.companyName || `${pro.user?.firstName ?? ''} ${pro.user?.lastName ?? ''}`.trim() || '—'}
                         </div>
                         <div className="text-xs text-gray-500">{pro.user?.email}</div>
+                        {pro.user?.phone && <div className="text-xs text-gray-400">{pro.user.phone}</div>}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
@@ -315,6 +316,18 @@ export default function ProsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={pro.status} config={STATUS_CONFIG} />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {pro.status === 'active' ? (
+                          <span className="flex items-center gap-1.5">
+                            <span className={`w-2.5 h-2.5 rounded-full ${pro.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} />
+                            <span className={`text-xs font-medium ${pro.isAvailable ? 'text-green-700' : 'text-gray-500'}`}>
+                              {pro.isAvailable ? 'Disponible' : 'Indisponible'}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-2 flex-wrap">

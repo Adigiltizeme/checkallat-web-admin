@@ -431,9 +431,7 @@ export default function BookingDetailPage() {
           <p className="font-medium text-gray-900">{clientName}</p>
           {booking.client?.email && <p className="text-sm text-gray-600">{booking.client.email}</p>}
           {booking.client?.phone && (
-            <p className="text-sm text-gray-400 flex items-center gap-1" title="Numéro masqué — système proxy">
-              🔒 {booking.client.phone.replace(/\d(?=\d{4})/g, '•')}
-            </p>
+            <p className="text-sm text-gray-600">📞 {booking.client.phone}</p>
           )}
         </div>
         <div className="bg-white p-5 rounded-lg shadow">
@@ -446,9 +444,7 @@ export default function BookingDetailPage() {
               )}
               {proUser?.email && <p className="text-sm text-gray-600">{proUser.email}</p>}
               {proUser?.phone && (
-                <p className="text-sm text-gray-400 flex items-center gap-1" title="Numéro masqué — système proxy">
-                  🔒 {proUser.phone.replace(/\d(?=\d{4})/g, '•')}
-                </p>
+                <p className="text-sm text-gray-600">📞 {proUser.phone}</p>
               )}
             </>
           ) : (
