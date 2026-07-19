@@ -25,13 +25,14 @@ import {
   Briefcase,
   Lightbulb,
   MessageSquare,
+  Tags,
 } from 'lucide-react';
 
 type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  badgeKey?: 'pendingDrivers' | 'pendingPros' | 'pendingProposals' | 'pendingBookings';
+  badgeKey?: 'pendingDrivers' | 'pendingPros' | 'pendingProposals' | 'pendingBookings' | 'pendingExtras';
 };
 
 type NavSection = {
@@ -82,6 +83,7 @@ const MENU_SECTIONS: NavSection[] = [
       { href: '/pros',               label: 'Prestataires',  icon: Briefcase,    badgeKey: 'pendingPros' },
       { href: '/bookings',           label: 'Réservations',  icon: CalendarCheck, badgeKey: 'pendingBookings' },
       { href: '/service-proposals',  label: 'Propositions',  icon: Lightbulb,    badgeKey: 'pendingProposals' },
+      { href: '/extras-review',      label: 'Suppléments',   icon: Tags,         badgeKey: 'pendingExtras' },
     ],
   },
   {
@@ -146,12 +148,14 @@ function SidebarContent({
   pendingPros,
   pendingProposals,
   pendingBookings,
+  pendingExtras,
 }: {
   collapsed: boolean;
   pendingDrivers: number;
   pendingPros: number;
   pendingProposals: number;
   pendingBookings: number;
+  pendingExtras: number;
 }) {
   const pathname = usePathname();
   const { toggle, closeMobile } = useSidebar();
@@ -162,6 +166,7 @@ function SidebarContent({
     if (item.badgeKey === 'pendingPros') return pendingPros;
     if (item.badgeKey === 'pendingProposals') return pendingProposals;
     if (item.badgeKey === 'pendingBookings') return pendingBookings;
+    if (item.badgeKey === 'pendingExtras') return pendingExtras;
     return 0;
   };
 
@@ -286,6 +291,7 @@ export function Sidebar() {
   const [pendingPros, setPendingPros] = useState(0);
   const [pendingProposals, setPendingProposals] = useState(0);
   const [pendingBookings, setPendingBookings] = useState(0);
+  const [pendingExtras, setPendingExtras] = useState(0);
   const prevDriversRef = useRef<number | null>(null);
   const prevProsRef = useRef<number | null>(null);
   const prevProposalsRef = useRef<number | null>(null);
@@ -346,6 +352,15 @@ export function Sidebar() {
         }
         prevBookingsRef.current = bookingCount;
         setPendingBookings(bookingCount);
+
+        try {
+          const extrasData = await apiClient.get('/services/offerings/extras/pending/count') as { count: number };
+          const extrasCount: number = extrasData?.count ?? 0;
+          if (extrasCount > 0) {
+            notify('CheckAllAt — Suppléments', `${extrasCount} supplément(s) en attente d'approbation.`, 'extras-pending');
+          }
+          setPendingExtras(extrasCount);
+        } catch { /* endpoint optionnel */ }
       } catch { /* silent */ }
     };
 
@@ -357,7 +372,7 @@ export function Sidebar() {
   return (
     <>
       <div className="hidden md:flex h-screen flex-shrink-0">
-        <SidebarContent collapsed={collapsed} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} pendingBookings={pendingBookings} />
+        <SidebarContent collapsed={collapsed} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} pendingBookings={pendingBookings} pendingExtras={pendingExtras} />
       </div>
 
       {mobileOpen && (
@@ -365,7 +380,7 @@ export function Sidebar() {
       )}
 
       <div className={cn('fixed inset-y-0 left-0 z-50 md:hidden transition-transform duration-300', mobileOpen ? 'translate-x-0' : '-translate-x-full')}>
-        <SidebarContent collapsed={false} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} pendingBookings={pendingBookings} />
+        <SidebarContent collapsed={false} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} pendingBookings={pendingBookings} pendingExtras={pendingExtras} />
       </div>
     </>
   );

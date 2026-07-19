@@ -616,6 +616,87 @@ export default function SettingsPage() {
           </button>
         </div>
 
+        {/* Approbation des suppléments */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">Approbation des Suppléments (Extras)</h2>
+          <p className="text-sm text-gray-500 mb-5">
+            Contrôle la validation des suppléments ajoutés par les prestataires à leurs tarifs.
+          </p>
+
+          <div className="space-y-5">
+            {/* Mode */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Mode d'approbation</label>
+              <div className="flex flex-col gap-3">
+                <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors ${
+                  (settings.extraApprovalMode ?? 'threshold') === 'threshold'
+                    ? 'border-emerald-500 bg-emerald-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="extraApprovalMode"
+                    value="threshold"
+                    checked={(settings.extraApprovalMode ?? 'threshold') === 'threshold'}
+                    onChange={() => setSettings({ ...settings, extraApprovalMode: 'threshold' })}
+                    className="mt-0.5 accent-emerald-600"
+                  />
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">🎯 Seuil automatique <span className="text-xs font-normal text-gray-500">(recommandé)</span></p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Les suppléments dont le prix est ≤ au seuil sont approuvés automatiquement. Les autres passent en révision manuelle.
+                    </p>
+                  </div>
+                </label>
+                <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors ${
+                  settings.extraApprovalMode === 'manual'
+                    ? 'border-amber-500 bg-amber-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="extraApprovalMode"
+                    value="manual"
+                    checked={settings.extraApprovalMode === 'manual'}
+                    onChange={() => setSettings({ ...settings, extraApprovalMode: 'manual' })}
+                    className="mt-0.5 accent-amber-500"
+                  />
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">🔍 Révision manuelle totale</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Tous les suppléments, quel que soit leur montant, doivent être approuvés manuellement par un admin.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Seuil — visible uniquement en mode threshold */}
+            {(settings.extraApprovalMode ?? 'threshold') === 'threshold' && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Seuil d'auto-approbation
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={settings.extraAutoApprovalThreshold ?? 50}
+                    onChange={(e) => setSettings({ ...settings, extraAutoApprovalThreshold: Number(e.target.value) })}
+                    className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm"
+                  />
+                  <span className="text-sm text-gray-500">{settings.currency ?? 'EGP'}</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Les suppléments ≤ {settings.extraAutoApprovalThreshold ?? 50} {settings.currency ?? 'EGP'} sont approuvés automatiquement.
+                  Au-delà, ils sont soumis à révision manuelle.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Expansion géographique */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Expansion Géographique</h2>
