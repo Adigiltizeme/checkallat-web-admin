@@ -56,7 +56,11 @@ export default function ProsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(() => loadData(), 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const id = setTimeout(() => setSearch(searchInput), 300);
