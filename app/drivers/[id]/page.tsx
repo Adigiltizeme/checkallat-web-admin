@@ -27,6 +27,12 @@ const VEHICLE_LABELS: Record<string, string> = {
   large_truck: 'Grand camion',
 };
 
+const DOC_TYPE_LABELS: Record<string, string> = {
+  national_id: "Carte nationale d'identité",
+  passport: 'Passeport',
+  residence_permit: 'Titre de séjour',
+};
+
 export default function DriverDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -34,6 +40,7 @@ export default function DriverDetailPage() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [reason, setReason] = useState('');
+  const [kycReason, setKycReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
@@ -104,6 +111,24 @@ export default function DriverDetailPage() {
     setProcessing(true);
     try {
       await apiClient.patch(`/admin/users/${driver.user?.id}/reactivate`);
+      loadData();
+    } catch (error: any) {
+      alert('Erreur: ' + (error.response?.data?.message || 'Une erreur est survenue'));
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleRequestKycRenewal = async () => {
+    if (!kycReason.trim()) {
+      alert('Veuillez indiquer la raison du renouvellement demandé.');
+      return;
+    }
+    setProcessing(true);
+    try {
+      await apiClient.post(`/admin/drivers/${params.id}/request-kyc-renewal`, { reason: kycReason });
+      alert('Renouvellement KYC demandé avec succès.');
+      setKycReason('');
       loadData();
     } catch (error: any) {
       alert('Erreur: ' + (error.response?.data?.message || 'Une erreur est survenue'));
@@ -315,6 +340,91 @@ export default function DriverDetailPage() {
             </div>
           </button>
           <p className="mt-2 text-xs text-gray-400">Cliquez pour agrandir</p>
+        </div>
+      )}
+
+      {/* Documents KYC */}
+      {(driver.idDocumentFront || driver.selfiePhoto) && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Pièce d'identité &amp; selfie
+              {driver.idDocumentType && (
+                <span className="ml-2 text-sm font-normal text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                  {DOC_TYPE_LABELS[driver.idDocumentType] || driver.idDocumentType}
+                </span>
+              )}
+            </h2>
+            {driver.kycRenewalReason && (
+              <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full">
+                Renouvellement demandé
+              </span>
+            )}
+          </div>
+
+          {driver.kycRenewalReason && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1">Motif du renouvellement</p>
+              <p className="text-sm text-amber-900">{driver.kycRenewalReason}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {driver.idDocumentFront && (
+              <div>
+                <p className="text-xs text-gray-500 font-medium mb-1">Recto</p>
+                <button onClick={() => setLightboxSrc(driver.idDocumentFront)} className="block w-full">
+                  <img src={driver.idDocumentFront} alt="Recto" className="w-full h-40 object-cover rounded-lg border border-gray-200 hover:border-indigo-400 transition-colors" />
+                </button>
+              </div>
+            )}
+            {driver.idDocumentBack && (
+              <div>
+                <p className="text-xs text-gray-500 font-medium mb-1">Verso</p>
+                <button onClick={() => setLightboxSrc(driver.idDocumentBack)} className="block w-full">
+                  <img src={driver.idDocumentBack} alt="Verso" className="w-full h-40 object-cover rounded-lg border border-gray-200 hover:border-indigo-400 transition-colors" />
+                </button>
+              </div>
+            )}
+            {driver.selfiePhoto && (
+              <div>
+                <p className="text-xs text-gray-500 font-medium mb-1">Selfie</p>
+                <button onClick={() => setLightboxSrc(driver.selfiePhoto)} className="block w-full">
+                  <img src={driver.selfiePhoto} alt="Selfie" className="w-full h-40 object-cover rounded-lg border border-gray-200 hover:border-indigo-400 transition-colors" />
+                </button>
+              </div>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-gray-400">Cliquez sur une photo pour l'agrandir</p>
+        </div>
+      )}
+
+      {/* Demander renouvellement KYC */}
+      {driver.status === 'active' && (driver.idDocumentFront || driver.selfiePhoto) && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Demander renouvellement des documents</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Le chauffeur recevra une notification et devra soumettre de nouveaux documents. Son statut repassera en attente.
+          </p>
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Motif (obligatoire)
+            </label>
+            <textarea
+              value={kycReason}
+              onChange={(e) => setKycReason(e.target.value)}
+              placeholder="Ex : document expiré, photo illisible, nom différent..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+            />
+          </div>
+          <button
+            onClick={handleRequestKycRenewal}
+            disabled={!kycReason.trim() || processing}
+            className="px-5 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium"
+          >
+            Demander le renouvellement
+          </button>
         </div>
       )}
 
