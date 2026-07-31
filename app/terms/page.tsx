@@ -14,7 +14,7 @@ export default function TermsPage() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Conditions Générales d'Utilisation</h1>
-        <p className="text-sm text-gray-500 mb-8">Dernière mise à jour : mai 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Dernière mise à jour : juillet 2026</p>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-8 text-gray-700 text-sm leading-relaxed">
 
@@ -67,15 +67,33 @@ export default function TermsPage() {
           </section>
 
           <section>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">3 bis. Vérification d’identité (KYC)</h2>
+            <p className="mb-2">
+              Dans le cadre de la lutte contre la fraude et conformément aux obligations réglementaires applicables, CheckAll@t soumet les chauffeurs, transporteurs et prestataires à un processus de vérification d’identité (Know Your Customer — KYC). Ce processus implique :
+            </p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>La fourniture d’une pièce d’identité officielle en cours de validité (carte nationale d’identité, passeport ou titre de séjour), sous forme de photo recto et, selon le document, verso.</li>
+              <li>La fourniture d’une photo de type selfie afin de rapprocher l’identité déclarée du document transmis.</li>
+              <li>L’exactitude et l’authenticité de tous les documents soumis. Tout document falsifié ou incomplet entraînera le rejet de la candidature et peut faire l’objet de signalement aux autorités compétentes.</li>
+            </ul>
+            <p className="mt-2">
+              CheckAll@t se réserve le droit de demander un renouvellement des documents KYC à tout moment, notamment en cas d’expiration, de suspicion de fraude ou d’évolution réglementaire. Le prestataire dont le profil est actif dispose d’un délai raisonnable pour fournir les nouveaux documents avant toute suspension de compte. Les données collectées dans ce cadre sont traitées conformément à la politique de confidentialité.
+            </p>
+          </section>
+
+          <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">4. Paiements, commissions et reversements</h2>
             <p className="mb-2">
               Les paiements sur CheckAll@t peuvent s’effectuer selon les moyens disponibles dans l’application, notamment :
             </p>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Carte bancaire ou autre moyen de paiement électronique pris en charge par la plateforme.</li>
+              <li>Carte bancaire ou autre moyen de paiement électronique pris en charge par la plateforme, avec possibilité d'enregistrer un moyen de paiement pour faciliter les transactions futures.</li>
               <li>Paiement local ou alternatif, selon le pays et les options activées.</li>
               <li>Paiement en espèces, lorsque cette option est expressément autorisée pour un service donné.</li>
             </ul>
+            <p className="mt-2">
+              L'enregistrement d'un moyen de paiement (carte bancaire) est géré exclusivement via Stripe, prestataire certifié PCI-DSS. Aucune donnée de carte bancaire brute n'est stockée sur les serveurs de CheckAll@t. Un utilisateur peut ajouter ou supprimer ses moyens de paiement enregistrés depuis son profil à tout moment.
+            </p>
             <p className="mt-2">
               CheckAll@t perçoit une commission sur certaines transactions réalisées via la plateforme. Le montant ou le pourcentage de cette commission peut varier selon le type de service, le pays, le segment du prestataire et la nature de l’opération. Les modalités applicables sont communiquées aux utilisateurs concernés avant validation.
             </p>

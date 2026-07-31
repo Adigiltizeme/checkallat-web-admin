@@ -26,6 +26,7 @@ import {
   Lightbulb,
   MessageSquare,
   Tags,
+  ShieldCheck,
 } from 'lucide-react';
 
 type NavItem = {
@@ -125,7 +126,8 @@ const MENU_SECTIONS: NavSection[] = [
   {
     title: 'Système',
     items: [
-      { href: '/settings', label: 'Paramètres', icon: Settings },
+      { href: '/admins',   label: 'Admins',      icon: ShieldCheck },
+      { href: '/settings', label: 'Paramètres',  icon: Settings },
     ],
   },
 ];

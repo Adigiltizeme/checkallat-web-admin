@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Politique de confidentialité</h1>
-        <p className="text-sm text-gray-500 mb-8">Dernière mise à jour : mai 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Dernière mise à jour : juillet 2026</p>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-8 text-gray-700 text-sm leading-relaxed">
 
@@ -39,6 +39,8 @@ export default function PrivacyPage() {
               <li><strong>Données de localisation :</strong> position GPS lorsque cela est nécessaire au service et avec consentement lorsque la loi l’exige.</li>
               <li><strong>Données de transaction :</strong> commandes, réservations, paiements, remboursements, commissions, historique des opérations.</li>
               <li><strong>Données professionnelles :</strong> informations liées au véhicule, à l’activité, aux documents justificatifs et à la validation du profil.</li>
+              <li><strong>Données de vérification d’identité (KYC) :</strong> photo recto et/ou verso d’une pièce d’identité officielle (carte nationale d’identité, passeport ou titre de séjour) et photo de type selfie, collectées uniquement pour les chauffeurs, transporteurs et prestataires dans le cadre du processus de vérification d’identité (Know Your Customer).</li>
+              <li><strong>Données de moyens de paiement enregistrés :</strong> un identifiant technique de méthode de paiement fourni par Stripe (token). Aucun numéro de carte bancaire complet n’est stocké sur nos serveurs ; les données sensibles sont hébergées et gérées exclusivement par Stripe.</li>
               <li><strong>Données de communication :</strong> messages échangés via la messagerie intégrée, support et avis.</li>
               <li><strong>Données techniques :</strong> adresse IP, appareil utilisé, système d’exploitation, journaux, identifiants techniques, rapports d’erreurs.</li>
               <li><strong>Données de contenu :</strong> photos, documents et autres fichiers transmis volontairement dans le cadre du service.</li>
@@ -55,6 +57,8 @@ export default function PrivacyPage() {
               <li>Assurer le bon fonctionnement des modules proposés par CheckAll@t.</li>
               <li>Afficher certaines informations de géolocalisation lorsque cela est nécessaire au service.</li>
               <li>Vous envoyer des notifications liées à vos réservations, messages ou activités sur la plateforme.</li>
+              <li>Vérifier l'identité des chauffeurs, transporteurs et prestataires via un processus KYC (Know Your Customer) afin de garantir la sécurité des utilisateurs et la conformité réglementaire.</li>
+              <li>Permettre l'enregistrement sécurisé de moyens de paiement via Stripe pour faciliter les transactions futures.</li>
               <li>Prévenir la fraude, sécuriser la plateforme et détecter les usages abusifs.</li>
               <li>Améliorer nos services grâce à des analyses statistiques agrégées et anonymisées.</li>
               <li>Répondre à nos obligations légales, comptables, fiscales et réglementaires.</li>
@@ -80,7 +84,7 @@ export default function PrivacyPage() {
               Nous pouvons faire appel à des prestataires techniques et partenaires de confiance pour faire fonctionner la plateforme. Ils n’utilisent vos données que dans le cadre des missions qui leur sont confiées.
             </p>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Stripe</strong> — traitement des paiements.</li>
+              <li><strong>Stripe</strong> — traitement des paiements, tokenisation et gestion sécurisée des moyens de paiement enregistrés. Stripe agit en qualité de sous-traitant certifié PCI-DSS ; aucune donnée de carte bancaire brute ne transite par nos serveurs.</li>
               <li><strong>Twilio</strong> — envoi de SMS, OTP et notifications de vérification.</li>
               <li><strong>Mapbox</strong> — cartographie, géocodage et calcul d’itinéraires.</li>
               <li><strong>Cloudinary</strong> — stockage et optimisation d’images et de fichiers.</li>
@@ -103,6 +107,9 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-3">7. Conservation des données</h2>
             <p>
               Vos données sont conservées pendant la durée nécessaire à la fourniture du service, puis archivées ou supprimées selon les obligations légales applicables. Les durées de conservation peuvent varier selon la nature des données : compte utilisateur, données de transaction, contenus échangés, documents de vérification, journaux techniques ou obligations comptables.
+            </p>
+            <p className="mt-2">
+              Les documents d'identité et photos de selfie collectés dans le cadre du processus KYC sont conservés pour la durée du profil actif, et peuvent être archivés après désactivation du compte conformément aux obligations de traçabilité applicables. Les identifiants de moyens de paiement enregistrés (tokens Stripe) sont supprimés sur demande ou lors de la suppression du compte.
             </p>
             <p className="mt-2">
               Lorsqu’un compte est supprimé, certaines données peuvent être conservées temporairement afin de répondre à des obligations légales, fiscales, comptables, de sécurité ou de résolution de litiges.
