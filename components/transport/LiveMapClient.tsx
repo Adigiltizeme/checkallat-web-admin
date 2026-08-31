@@ -11,6 +11,7 @@ import Map, {
 } from 'react-map-gl/mapbox';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
+import { useZone } from '@/contexts/ZoneContext';
 import {
   RefreshCw,
   PanelLeftOpen,
@@ -197,6 +198,7 @@ export default function LiveMapClient() {
   const [refreshing, setRefreshing]   = useState(false);
   const [lastUpdate, setLastUpdate]   = useState<Date | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { selectedZone } = useZone();
   const [activeFilters, setActiveFilters]              = useState<Set<string>>(new Set(ACTIVE_STATUSES));
   const [activeBookingFilters, setActiveBookingFilters] = useState<Set<string>>(new Set(ACTIVE_BOOKING_STATUSES));
 
@@ -252,7 +254,7 @@ export default function LiveMapClient() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [sector]);
+  }, [sector, selectedZone]);
 
   // ── Map helpers ────────────────────────────────────────────────────────────
 
@@ -488,7 +490,7 @@ export default function LiveMapClient() {
                     </div>
                     <div className="flex items-center justify-between mt-1.5">
                       <span className="text-xs font-semibold text-teal-700">
-                        {Number(r.totalPrice).toLocaleString('fr-FR')} EGP
+                        {Number(r.totalPrice).toLocaleString('fr-FR')} {(r as any).currency ?? ''}
                       </span>
                       <span className="text-xs text-gray-400">{r.distance?.toFixed(1)} km</span>
                     </div>
@@ -556,7 +558,7 @@ export default function LiveMapClient() {
                     </p>
                     <div className="flex items-center justify-between mt-1.5">
                       <span className="text-xs font-semibold text-teal-700">
-                        {Number(b.totalPrice).toLocaleString('fr-FR')} EGP
+                        {Number(b.totalPrice).toLocaleString('fr-FR')} {(b as any).currency ?? ''}
                       </span>
                     </div>
                   </div>
@@ -925,7 +927,7 @@ function TransportPopupContent({
         )}
 
         <div className="flex items-center justify-between pt-1 border-t border-gray-100">
-          <span className="font-bold text-teal-700">{Number(r.totalPrice).toLocaleString('fr-FR')} EGP</span>
+          <span className="font-bold text-teal-700">{Number(r.totalPrice).toLocaleString('fr-FR')} {(r as any).currency ?? ''}</span>
           <span className="text-xs text-gray-400">{r.distance?.toFixed(1)} km</span>
         </div>
 
@@ -994,7 +996,7 @@ function BookingPopupContent({ booking: b }: { booking: Booking }) {
         </div>
 
         <div className="flex items-center justify-between pt-1 border-t border-gray-100">
-          <span className="font-bold text-teal-700">{Number(b.totalPrice).toLocaleString('fr-FR')} EGP</span>
+          <span className="font-bold text-teal-700">{Number(b.totalPrice).toLocaleString('fr-FR')} {(b as any).currency ?? ''}</span>
         </div>
 
         <Link

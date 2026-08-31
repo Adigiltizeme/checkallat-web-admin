@@ -1,22 +1,49 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { SUPPORTED_CURRENCIES } from '@/lib/constants';
+import { formatCurrency } from '@/lib/currency';
 import { apiClient } from '@/lib/api';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useZone } from '@/contexts/ZoneContext';
 import { CommissionRatesModal } from '@/components/settings/CommissionRatesModal';
 import { CategoriesModal } from '@/components/settings/CategoriesModal';
 import { ServiceZonesModal } from '@/components/settings/ServiceZonesModal';
 import { TransportPricingModal } from '@/components/settings/TransportPricingModal';
 import { ServicePricingModal } from '@/components/settings/ServicePricingModal';
 
+const CATEGORY_LABELS: Record<string, string> = {
+  moving_transport: 'Déménagement & Transport',
+  plumbing: 'Plomberie',
+  electricity: 'Électricité',
+  painting: 'Peinture',
+  handyman: 'Bricolage',
+  cleaning: 'Nettoyage',
+  carpentry: 'Menuiserie',
+  air_condition: 'Climatisation',
+  marketplace: 'Marketplace',
+};
+
+const computeDisplayRates = (
+  storedRates: Record<string, number>,
+  base: string,
+): Record<string, number> => {
+  const baseRate = storedRates[base] ?? 1;
+  if (!baseRate) return storedRates;
+  return Object.fromEntries(
+    Object.entries(storedRates).map(([code, rate]) => [code, rate / baseRate]),
+  );
+};
+
 export default function SettingsPage() {
   const { settings: globalSettings, refreshSettings } = useSettings();
+  const { zones: countryZones } = useZone();
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshingRates, setRefreshingRates] = useState(false);
   const [lastRateUpdate, setLastRateUpdate] = useState<string | null>(null);
+  const [previewBase, setPreviewBase] = useState<string | null>(null);
 
   const [isCommissionModalOpen, setIsCommissionModalOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
@@ -25,10 +52,19 @@ export default function SettingsPage() {
   const [transportPricings, setTransportPricings] = useState<any[]>([]);
 
   const [isServicePricingModalOpen, setIsServicePricingModalOpen] = useState(false);
+  const [servicePricingDefaultZone, setServicePricingDefaultZone] = useState<string | undefined>(undefined);
   const [servicePricings, setServicePricings] = useState<any[]>([]);
 
+  // Synchroniser le state local depuis SettingsContext (source unique)
   useEffect(() => {
-    loadSettings();
+    if (globalSettings) {
+      setSettings((prev) => ({ ...prev, ...globalSettings }));
+      setLoading(false);
+    }
+  }, [globalSettings]);
+
+  useEffect(() => {
+    loadSettings();        // pour les champs full (updatedAt, etc.)
     loadTransportPricings();
     loadServicePricings();
   }, []);
@@ -88,7 +124,7 @@ export default function SettingsPage() {
     await apiClient.put('/admin/settings', { serviceZones: zones });
     await refreshSettings();
     await loadSettings();
-    alert('Zones de service mises à jour !');
+    alert('Zones de la plateforme mises à jour !');
   };
 
   const handleSaveTransportPricing = async (pricings: any[]) => {
@@ -124,8 +160,25 @@ export default function SettingsPage() {
   };
 
   const handleDeleteServicePricing = async (id: string) => {
+    if (!confirm('Supprimer ce tarif de prestation ?')) return;
     await apiClient.delete(`/admin/service-pricing/${id}`);
     await loadServicePricings();
+  };
+
+  const handleDeleteTransportPricing = async (id: string) => {
+    if (!confirm('Supprimer ce tarif de transport ? Cette action est irréversible.')) return;
+    try {
+      await apiClient.delete(`/admin/transport-pricing/${id}`);
+      await loadTransportPricings();
+    } catch {
+      alert('Erreur lors de la suppression');
+    }
+  };
+
+  const handleDeleteRate = (code: string) => {
+    const updated = { ...(settings.exchangeRates as Record<string, number>) };
+    delete updated[code];
+    setSettings({ ...settings, exchangeRates: updated });
   };
 
   const handleSave = async () => {
@@ -185,11 +238,14 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Devise par défaut (Marché actuel)
+                Devise de référence (base des taux de change)
               </label>
               <select
-                value={settings.currency ?? 'EGP'}
-                onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
+                value={settings.baseCurrency ?? settings.currency ?? ''}
+                onChange={(e) => {
+                  setSettings({ ...settings, currency: e.target.value, baseCurrency: e.target.value });
+                  setPreviewBase(e.target.value);
+                }}
                 className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {Object.values(SUPPORTED_CURRENCIES).map((currency) => (
@@ -199,7 +255,7 @@ export default function SettingsPage() {
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                Devise utilisée pour ce marché géographique
+                Devise de base pour les taux de change. Chaque zone géographique conserve sa propre devise.
               </p>
             </div>
 
@@ -224,11 +280,374 @@ export default function SettingsPage() {
               </p>
               {lastRateUpdate && (
                 <p className="text-xs text-gray-400 mt-1">
-                  Dernière mise à jour: {new Date(lastRateUpdate).toLocaleString('fr-FR')}
+                  Dernière mise à jour : {new Date(lastRateUpdate).toLocaleString('fr-FR')}
                 </p>
               )}
+              {settings.exchangeRates && typeof settings.exchangeRates === 'object' && Object.keys(settings.exchangeRates).length > 0 && (() => {
+                const effectiveBase = previewBase || settings.baseCurrency || settings.currency || '';
+                const displayRates = computeDisplayRates(settings.exchangeRates as Record<string, number>, effectiveBase);
+                return (
+                  <div className="mt-3">
+                    <p className="text-xs font-medium text-gray-600 mb-2">
+                      Taux actuels (base {effectiveBase} = 1)
+                      {previewBase && previewBase !== (settings.baseCurrency ?? settings.currency ?? '') && (
+                        <span className="ml-2 text-blue-500 italic">— aperçu avant enregistrement</span>
+                      )}
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {Object.entries(displayRates).map(([code, rate]) => {
+                        const curr = SUPPORTED_CURRENCIES[code as keyof typeof SUPPORTED_CURRENCIES];
+                        return (
+                          <div key={code} className="group flex items-center justify-between bg-gray-50 border border-gray-200 rounded px-3 py-2 hover:border-gray-300">
+                            <div className="flex items-baseline gap-1 min-w-0">
+                              <span className="text-xs font-semibold text-gray-700 shrink-0">{curr?.symbol ?? code}</span>
+                              <span className="text-xs text-gray-400 shrink-0">{code}</span>
+                              {curr?.name && <span className="text-xs text-gray-300 truncate hidden sm:inline">— {curr.name}</span>}
+                            </div>
+                            <div className="flex items-center gap-1 ml-2 shrink-0">
+                              <span className="text-xs text-gray-500 tabular-nums">{Number(rate).toFixed(4)}</span>
+                              <button
+                                onClick={() => handleDeleteRate(code)}
+                                title={`Supprimer ${code}`}
+                                className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 text-sm leading-none ml-1 transition-opacity"
+                              >×</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">Survolez une devise pour la supprimer. Cliquez sur "Enregistrer" pour valider.</p>
+                  </div>
+                );
+              })()}
             </div>
           </div>
+        </div>
+
+        {/* Catégories et zones */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Catégories et Zones</h2>
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium text-gray-900 mb-2">Catégories de services</h3>
+              <div className="mb-2">
+                {(globalSettings as any)?.serviceCategories && Array.isArray((globalSettings as any).serviceCategories) ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(globalSettings as any).serviceCategories
+                      .filter((cat: any) => cat.enabled)
+                      .map((cat: any) => (
+                        <span
+                          key={cat.id}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                        >
+                          <span>
+                            {cat.icon === 'truck' && '🚚'}
+                            {cat.icon === 'wrench' && '🔧'}
+                            {cat.icon === 'zap' && '⚡'}
+                            {cat.icon === 'paint-brush' && '🎨'}
+                            {cat.icon === 'tool' && '🔨'}
+                            {cat.icon === 'sparkles' && '✨'}
+                            {cat.icon === 'shopping-bag' && '🛍️'}
+                          </span>
+                          <span>{cat.name}</span>
+                        </span>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600">Chargement...</p>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mb-2">
+                {(globalSettings as any)?.serviceCategories?.length || 0} catégorie(s) configurée(s)
+              </p>
+              <button
+                onClick={() => setIsCategoriesModalOpen(true)}
+                className="mt-2 px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary-dark"
+              >
+                Gérer les catégories
+              </button>
+            </div>
+
+            <div>
+              <h3 className="font-medium text-gray-900 mb-2">Zones de la plateforme</h3>
+              <p className="text-sm text-gray-600 mb-2">
+                Zones géographiques couvertes par la plateforme
+              </p>
+              <div className="mb-2">
+                {(globalSettings as any)?.serviceZones && Array.isArray((globalSettings as any).serviceZones) ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(globalSettings as any).serviceZones
+                      .filter((zone: any) => zone.enabled)
+                      .map((zone: any) => (
+                          <span
+                            key={zone.id}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full"
+                          >
+                            <span>{zone.flag || '🌍'}</span>
+                            <span>{zone.name}, {zone.country}</span>
+                          </span>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600">Chargement...</p>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mb-2">
+                {Array.isArray((globalSettings as any)?.serviceZones) ? (globalSettings as any).serviceZones.filter((z: any) => z.enabled).length : 0} zone(s) active(s)
+              </p>
+              <button
+                onClick={() => setIsZonesModalOpen(true)}
+                className="mt-2 px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary-dark"
+              >
+                Gérer les zones
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Transport Pricing */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Tarifs de Transport</h2>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 mb-4">
+              Grilles tarifaires pour le service de déménagement et transport par zone géographique
+            </p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Zone
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Devise
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Fourgon
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Petit camion
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Grand camion
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Dist. palier 1
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Etage
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Aide
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Statut
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {transportPricings.length > 0 ? (
+                    transportPricings.map((pricing) => {
+                      const zone = countryZones.find((z) => z.id === pricing.countryId);
+                      return (
+                      <tr key={pricing.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {zone ? `${zone.flag ?? '🌍'} ${zone.nameFr}` : (
+                            <span className="text-amber-600" title="Pays non trouvé dans la table Country">
+                              ⚠️ {pricing.countryId ?? '—'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {pricing.currency}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {formatCurrency(pricing.baseFareVan, pricing.currency)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {formatCurrency(pricing.baseFareSmallTruck, pricing.currency)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {formatCurrency(pricing.basefareLargeTruck, pricing.currency)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {pricing.distanceTier1Rate > 0
+                            ? `${formatCurrency(pricing.distanceTier1Rate, pricing.currency)}/km (0–${pricing.distanceTier1Max} km)`
+                            : <span className="text-gray-400">—</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {pricing.floorRatePerLevel > 0
+                            ? `${formatCurrency(pricing.floorRatePerLevel, pricing.currency)}/niv.`
+                            : <span className="text-gray-400">—</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {pricing.helperRatePerPerson > 0
+                            ? `${formatCurrency(pricing.helperRatePerPerson, pricing.currency)}/pers.`
+                            : <span className="text-gray-400">—</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs rounded ${
+                            pricing.isActive
+                              ? 'text-green-600 bg-green-100'
+                              : 'text-gray-600 bg-gray-100'
+                          }`}>
+                            {pricing.isActive ? 'Actif' : 'Inactif'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => handleDeleteTransportPricing(pricing.id)}
+                            className="text-xs text-red-400 hover:text-red-600 hover:underline"
+                          >
+                            Supprimer
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={10} className="px-6 py-4 text-center text-sm text-gray-500">
+                        Aucun tarif configuré
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <button
+              onClick={() => setIsTransportPricingModalOpen(true)}
+              className="mt-4 px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary-dark"
+            >
+              Modifier les tarifs
+            </button>
+          </div>
+        </div>
+
+        {/* Tarification Prestations de Services */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">Tarification — Prestations de Services</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Tarifs par zone géographique. Les "Paramètres" sont les règles de calcul propres à chaque métier (tarif horaire, prix au m², frais de déplacement…) utilisées par l'application mobile.
+          </p>
+          <div className="overflow-x-auto">
+            {(() => {
+              const allZones = countryZones;
+              const byZone = servicePricings.reduce((acc: Record<string, any[]>, p: any) => {
+                (acc[p.countryId] = acc[p.countryId] || []).push(p);
+                return acc;
+              }, {});
+              if (allZones.length === 0 && servicePricings.length === 0) {
+                return <p className="text-sm text-gray-500 py-4">Aucun tarif configuré</p>;
+              }
+              const renderPricingRow = (p: any) => {
+                const rules = p.pricingRules && typeof p.pricingRules === 'object' ? p.pricingRules : {};
+                const ruleKeys = Object.keys(rules);
+                return (
+                  <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                      {CATEGORY_LABELS[p.categorySlug as string] ?? p.categorySlug}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">
+                      {formatCurrency(p.basePrice, p.currency)}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
+                      {p.urgencyMultiplier}×
+                    </td>
+                    <td className="px-6 py-3 text-sm">
+                      {ruleKeys.length > 0 ? (
+                        <span className="text-gray-600 text-xs">
+                          {ruleKeys.map(k => `${k}: ${rules[k]}`).join(' · ')}
+                        </span>
+                      ) : (
+                        <span className="text-amber-500 text-xs">⚠ A configurer</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs rounded ${p.isActive ? 'text-green-600 bg-green-100' : 'text-gray-600 bg-gray-100'}`}>
+                        {p.isActive ? 'Actif' : 'Inactif'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-right">
+                      <button
+                        onClick={() => handleDeleteServicePricing(p.id)}
+                        className="text-xs text-red-400 hover:text-red-600 hover:underline"
+                      >
+                        Supprimer
+                      </button>
+                    </td>
+                  </tr>
+                );
+              };
+              return (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {['Catégorie', 'Prix de base', 'Urgence ×', 'Paramètres de calcul', 'Statut', ''].map(h => (
+                        <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white">
+                    {allZones.map((zone) => {
+                      const zonePricings = byZone[zone.id] ?? [];
+                      return (
+                        <Fragment key={zone.id}>
+                          <tr className="bg-blue-50 border-t border-b border-blue-100">
+                            <td colSpan={6} className="px-6 py-2">
+                              <span className="font-semibold text-sm text-blue-800">
+                                {`${zone.flag ?? '🌍'} ${zone.nameFr} (${zone.currency})`}
+                              </span>
+                            </td>
+                          </tr>
+                          {zonePricings.length > 0 ? zonePricings.map(renderPricingRow) : (
+                            <tr>
+                              <td colSpan={5} className="px-6 py-3 text-sm text-gray-400 italic">
+                                Aucun tarif configuré pour ce pays
+                              </td>
+                              <td className="px-6 py-3 text-right">
+                                <button
+                                  onClick={() => { setServicePricingDefaultZone(zone.id); setIsServicePricingModalOpen(true); }}
+                                  className="text-xs text-primary hover:underline font-medium"
+                                  title={`Ajouter un tarif pour ${zone.nameFr}`}
+                                >
+                                  + Ajouter
+                                </button>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                    {Object.entries(byZone)
+                      .filter(([zoneId]) => !allZones.find((z) => z.id === zoneId))
+                      .map(([zoneId, zonePricings]) => (
+                        <Fragment key={zoneId}>
+                          <tr className="bg-amber-50 border-t border-b border-amber-100">
+                            <td colSpan={6} className="px-6 py-2">
+                              <span className="font-semibold text-sm text-amber-700">
+                                ⚠️ Zone supprimée : {zoneId}
+                              </span>
+                            </td>
+                          </tr>
+                          {(zonePricings as any[]).map(renderPricingRow)}
+                        </Fragment>
+                      ))
+                    }
+                  </tbody>
+                </table>
+              );
+            })()}
+          </div>
+          <button
+            onClick={() => { setServicePricingDefaultZone(undefined); setIsServicePricingModalOpen(true); }}
+            className="mt-4 px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary-dark"
+          >
+            Gérer les tarifs
+          </button>
         </div>
 
         {/* Taux de commission */}
@@ -369,92 +788,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Catégories et zones */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Catégories et Zones</h2>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">Catégories de services</h3>
-              <div className="mb-2">
-                {(globalSettings as any)?.serviceCategories && Array.isArray((globalSettings as any).serviceCategories) ? (
-                  <div className="flex flex-wrap gap-2">
-                    {(globalSettings as any).serviceCategories
-                      .filter((cat: any) => cat.enabled)
-                      .map((cat: any) => (
-                        <span
-                          key={cat.id}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
-                        >
-                          <span>
-                            {cat.icon === 'truck' && '🚚'}
-                            {cat.icon === 'wrench' && '🔧'}
-                            {cat.icon === 'zap' && '⚡'}
-                            {cat.icon === 'paint-brush' && '🎨'}
-                            {cat.icon === 'tool' && '🔨'}
-                            {cat.icon === 'sparkles' && '✨'}
-                            {cat.icon === 'shopping-bag' && '🛍️'}
-                          </span>
-                          <span>{cat.name}</span>
-                        </span>
-                      ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-600">Chargement...</p>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mb-2">
-                {(globalSettings as any)?.serviceCategories?.length || 0} catégorie(s) configurée(s)
-              </p>
-              <button
-                onClick={() => setIsCategoriesModalOpen(true)}
-                className="mt-2 px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary-dark"
-              >
-                Gérer les catégories
-              </button>
-            </div>
-
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">Zones de service</h3>
-              <p className="text-sm text-gray-600 mb-2">
-                Zones géographiques couvertes par la plateforme
-              </p>
-              <div className="mb-2">
-                {(globalSettings as any)?.serviceZones && Array.isArray((globalSettings as any).serviceZones) ? (
-                  <div className="flex flex-wrap gap-2">
-                    {(globalSettings as any).serviceZones
-                      .filter((zone: any) => zone.enabled)
-                      .map((zone: any) => {
-                        const countryFlags: Record<string, string> = {
-                          EG: '🇪🇬', FR: '🇫🇷', SN: '🇸🇳', ML: '🇲🇱',
-                        };
-                        return (
-                          <span
-                            key={zone.id}
-                            className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full"
-                          >
-                            <span>{countryFlags[zone.countryCode] || '🌍'}</span>
-                            <span>{zone.name}, {zone.country}</span>
-                          </span>
-                        );
-                      })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-600">Chargement...</p>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mb-2">
-                {Array.isArray((globalSettings as any)?.serviceZones) ? (globalSettings as any).serviceZones.filter((z: any) => z.enabled).length : 0} zone(s) active(s)
-              </p>
-              <button
-                onClick={() => setIsZonesModalOpen(true)}
-                className="mt-2 px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary-dark"
-              >
-                Gérer les zones
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Badge Studyltizeme */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Badge Studyltizeme</h2>
@@ -490,130 +823,6 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Transport Pricing */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Tarifs de Transport</h2>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600 mb-4">
-              Grilles tarifaires pour le service de déménagement et transport par zone géographique
-            </p>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Zone
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Devise
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fourgon
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Petit camion
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Grand camion
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Statut
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {transportPricings.length > 0 ? (
-                    transportPricings.map((pricing) => (
-                      <tr key={pricing.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 uppercase">
-                          {pricing.serviceZoneId}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {pricing.currency}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {pricing.baseFareVan} {pricing.currency}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {pricing.baseFareSmallTruck} {pricing.currency}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {pricing.basefareLargeTruck} {pricing.currency}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs rounded ${
-                            pricing.isActive
-                              ? 'text-green-600 bg-green-100'
-                              : 'text-gray-600 bg-gray-100'
-                          }`}>
-                            {pricing.isActive ? 'Actif' : 'Inactif'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
-                        Aucun tarif configuré
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <button
-              onClick={() => setIsTransportPricingModalOpen(true)}
-              className="mt-4 px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary-dark"
-            >
-              Modifier les tarifs
-            </button>
-          </div>
-        </div>
-
-        {/* Tarification Prestations de Services */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Tarification — Prestations de Services</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  {['Catégorie', 'Zone', 'Devise', 'Prix de base', 'Urgence ×', 'Statut'].map(h => (
-                    <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {servicePricings.length > 0 ? (
-                  servicePricings.map((p: any) => (
-                    <tr key={p.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{p.categorySlug}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 uppercase">{p.serviceZoneId}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{p.currency}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{p.basePrice} {p.currency}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{p.urgencyMultiplier}×</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs rounded ${p.isActive ? 'text-green-600 bg-green-100' : 'text-gray-600 bg-gray-100'}`}>
-                          {p.isActive ? 'Actif' : 'Inactif'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">Aucun tarif configuré</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <button
-            onClick={() => setIsServicePricingModalOpen(true)}
-            className="mt-4 px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary-dark"
-          >
-            Gérer les tarifs
-          </button>
         </div>
 
         {/* Approbation des suppléments */}
@@ -686,10 +895,10 @@ export default function SettingsPage() {
                     onChange={(e) => setSettings({ ...settings, extraAutoApprovalThreshold: Number(e.target.value) })}
                     className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm"
                   />
-                  <span className="text-sm text-gray-500">{settings.currency ?? 'EGP'}</span>
+                  <span className="text-sm text-gray-500">{settings.currency ?? ''}</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  Les suppléments ≤ {settings.extraAutoApprovalThreshold ?? 50} {settings.currency ?? 'EGP'} sont approuvés automatiquement.
+                  Les suppléments ≤ {settings.extraAutoApprovalThreshold ?? 50} {settings.currency ?? ''} sont approuvés automatiquement.
                   Au-delà, ils sont soumis à révision manuelle.
                 </p>
               </div>
@@ -706,19 +915,13 @@ export default function SettingsPage() {
             </p>
             <div className="grid gap-4 md:grid-cols-2">
               {(globalSettings as any)?.serviceZones && Array.isArray((globalSettings as any).serviceZones) ? (
-                (globalSettings as any).serviceZones.map((zone: any) => {
-                  const countryFlags: Record<string, string> = {
-                    EG: '🇪🇬', FR: '🇫🇷', SN: '🇸🇳', ML: '🇲🇱',
-                    DZ: '🇩🇿', SA: '🇸🇦', AE: '🇦🇪',
-                  };
-
-                  return (
+                (globalSettings as any).serviceZones.map((zone: any) => (
                     <div
                       key={zone.id}
                       className={`border rounded-lg p-4 ${!zone.enabled ? 'opacity-60' : ''}`}
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-2xl">{countryFlags[zone.countryCode] || '🌍'}</span>
+                        <span className="text-2xl">{zone.flag || '🌍'}</span>
                         <div>
                           <h3 className="font-semibold">{zone.country}</h3>
                           <span className={`text-xs px-2 py-1 rounded ${
@@ -732,11 +935,10 @@ export default function SettingsPage() {
                       </div>
                       <p className="text-sm text-gray-600">{zone.name}</p>
                       <p className="text-xs text-gray-500">
-                        Devise: {zone.currency || 'EGP'}
+                        Devise: {zone.currency || '—'}
                       </p>
                     </div>
-                  );
-                })
+                  ))
               ) : (
                 <div className="col-span-2 text-center py-8 text-gray-500">
                   Chargement des zones...
@@ -797,14 +999,17 @@ export default function SettingsPage() {
           isOpen={isTransportPricingModalOpen}
           onClose={() => setIsTransportPricingModalOpen(false)}
           pricings={transportPricings}
+          zones={countryZones.map((c) => ({ id: c.id, name: c.nameFr, country: c.id, flag: c.flag, currency: c.currency, enabled: c.isEnabled }))}
           onSave={handleSaveTransportPricing}
         />
       )}
 
       <ServicePricingModal
         isOpen={isServicePricingModalOpen}
-        onClose={() => setIsServicePricingModalOpen(false)}
+        onClose={() => { setIsServicePricingModalOpen(false); setServicePricingDefaultZone(undefined); }}
         pricings={servicePricings}
+        zones={countryZones.map((c) => ({ id: c.id, name: c.nameFr, country: c.id, flag: c.flag, currency: c.currency, enabled: c.isEnabled }))}
+        defaultZoneId={servicePricingDefaultZone}
         onSave={handleSaveServicePricing}
         onCreate={handleCreateServicePricing}
         onDelete={handleDeleteServicePricing}

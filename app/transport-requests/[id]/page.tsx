@@ -392,15 +392,15 @@ export default function TransportRequestDetailPage() {
                 <div className="grid grid-cols-3 gap-4 mt-3">
                   <div className="p-3 bg-gray-50 rounded">
                     <p className="text-xs text-gray-500 mb-1">Montant total</p>
-                    <p className="font-bold">{formatCurrency(request.payment.amount)}</p>
+                    <p className="font-bold">{formatCurrency(request.payment.amount, request.currency)}</p>
                   </div>
                   <div className="p-3 bg-gray-50 rounded">
                     <p className="text-xs text-gray-500 mb-1">Commission ({request.payment.commissionRate}%)</p>
-                    <p className="font-bold">{formatCurrency(request.payment.commissionAmount)}</p>
+                    <p className="font-bold">{formatCurrency(request.payment.commissionAmount, request.currency)}</p>
                   </div>
                   <div className="p-3 bg-gray-50 rounded">
                     <p className="text-xs text-gray-500 mb-1">Net chauffeur</p>
-                    <p className="font-bold text-green-700">{formatCurrency(request.payment.proNetAmount)}</p>
+                    <p className="font-bold text-green-700">{formatCurrency(request.payment.proNetAmount, request.currency)}</p>
                   </div>
                 </div>
                 {request.payment.transferStatus === 'transferred' && request.payment.transferredAt && (
@@ -502,7 +502,7 @@ export default function TransportRequestDetailPage() {
               {request.driver.pendingCashCommission > 0 && (
                 <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                   <p className="text-sm font-semibold text-orange-800">
-                    💰 Commission cash en attente : {formatCurrency(request.driver.pendingCashCommission)}
+                    💰 Commission cash en attente : {formatCurrency(request.driver.pendingCashCommission, request.currency)}
                   </p>
                   {request.driver.isCashRestricted && (
                     <p className="text-xs text-red-600 mt-1">⛔ Accès cash restreint</p>
@@ -608,14 +608,14 @@ export default function TransportRequestDetailPage() {
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">💰 Prix</h2>
           <div className="space-y-1">
-            <div className="flex justify-between"><span>Base:</span><span>{formatCurrency(request.baseFare)}</span></div>
-            <div className="flex justify-between"><span>Distance:</span><span>{formatCurrency(request.distanceFare)}</span></div>
-            {request.floorFare > 0 && <div className="flex justify-between"><span>Étages:</span><span>{formatCurrency(request.floorFare)}</span></div>}
-            {request.helpersFare > 0 && <div className="flex justify-between"><span>Aides:</span><span>{formatCurrency(request.helpersFare)}</span></div>}
-            {request.servicesFare > 0 && <div className="flex justify-between"><span>Services:</span><span>{formatCurrency(request.servicesFare)}</span></div>}
+            <div className="flex justify-between"><span>Base:</span><span>{formatCurrency(request.baseFare, request.currency)}</span></div>
+            <div className="flex justify-between"><span>Distance:</span><span>{formatCurrency(request.distanceFare, request.currency)}</span></div>
+            {request.floorFare > 0 && <div className="flex justify-between"><span>Étages:</span><span>{formatCurrency(request.floorFare, request.currency)}</span></div>}
+            {request.helpersFare > 0 && <div className="flex justify-between"><span>Aides:</span><span>{formatCurrency(request.helpersFare, request.currency)}</span></div>}
+            {request.servicesFare > 0 && <div className="flex justify-between"><span>Services:</span><span>{formatCurrency(request.servicesFare, request.currency)}</span></div>}
             <div className="border-t pt-2 flex justify-between font-bold text-lg">
               <span>TOTAL:</span>
-              <span className="text-primary">{formatCurrency(request.totalPrice)}</span>
+              <span className="text-primary">{formatCurrency(request.totalPrice, request.currency)}</span>
             </div>
           </div>
 
@@ -651,18 +651,18 @@ export default function TransportRequestDetailPage() {
           <div className="grid md:grid-cols-3 gap-4">
             <div className="p-4 bg-gray-50 rounded">
               <p className="text-sm text-gray-600 mb-1">Montant attendu</p>
-              <p className="text-xl font-bold">{formatCurrency(request.totalPrice)}</p>
+              <p className="text-xl font-bold">{formatCurrency(request.totalPrice, request.currency)}</p>
             </div>
             <div className="p-4 bg-blue-50 rounded">
               <p className="text-sm text-blue-700 mb-1">💬 Déclaré par client</p>
               <p className="text-xl font-bold text-blue-800">
-                {request.cashAmountDeclaredByClient ? formatCurrency(request.cashAmountDeclaredByClient) : '⏳ En attente'}
+                {request.cashAmountDeclaredByClient ? formatCurrency(request.cashAmountDeclaredByClient, request.currency) : '⏳ En attente'}
               </p>
             </div>
             <div className="p-4 bg-green-50 rounded">
               <p className="text-sm text-green-700 mb-1">🚚 Déclaré par chauffeur</p>
               <p className="text-xl font-bold text-green-800">
-                {request.cashAmountDeclaredByDriver ? formatCurrency(request.cashAmountDeclaredByDriver) : '⏳ En attente'}
+                {request.cashAmountDeclaredByDriver ? formatCurrency(request.cashAmountDeclaredByDriver, request.currency) : '⏳ En attente'}
               </p>
             </div>
           </div>
@@ -745,7 +745,7 @@ export default function TransportRequestDetailPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-orange-800">
-                      💸 Frais d'annulation tardive : {formatCurrency(request.cancellationFeeAmount)}
+                      💸 Frais d'annulation tardive : {formatCurrency(request.cancellationFeeAmount, request.currency)}
                     </p>
                     <p className="text-xs mt-1">
                       Statut :{' '}
@@ -922,7 +922,7 @@ export default function TransportRequestDetailPage() {
                 </div>
                 {cancelRefundPct > 0 && (
                   <p className="text-sm text-blue-700 mt-2 font-medium">
-                    → {formatCurrency(request.payment.amount * cancelRefundPct / 100)} remboursés au client
+                    → {formatCurrency(request.payment.amount * cancelRefundPct / 100, request.currency)} remboursés au client
                   </p>
                 )}
               </div>
@@ -947,7 +947,7 @@ export default function TransportRequestDetailPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 space-y-4">
             <h3 className="text-xl font-bold">Remboursement post-litige</h3>
-            <p className="text-sm text-gray-600">Montant total : <span className="font-bold">{formatCurrency(request.payment?.amount ?? 0)}</span></p>
+            <p className="text-sm text-gray-600">Montant total : <span className="font-bold">{formatCurrency(request.payment?.amount ?? 0, request.currency)}</span></p>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Taux de remboursement : <span className="text-primary font-bold">{refundPct}%</span>
@@ -959,7 +959,7 @@ export default function TransportRequestDetailPage() {
                 className="w-full accent-primary"
               />
               <p className="text-sm text-blue-700 mt-2 font-medium">
-                → {formatCurrency((request.payment?.amount ?? 0) * refundPct / 100)} remboursés au client
+                → {formatCurrency((request.payment?.amount ?? 0) * refundPct / 100, request.currency)} remboursés au client
               </p>
             </div>
             <div>

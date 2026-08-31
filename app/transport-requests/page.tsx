@@ -13,6 +13,7 @@ import { DateRangeFilter } from '@/components/shared/DateRangeFilter';
 import { BulkActionBar } from '@/components/shared/BulkActionBar';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface TransportRequest {
   id: string;
@@ -81,6 +82,7 @@ export default function TransportRequestsPage() {
   const [bulkActioning, setBulkActioning] = useState(false);
   const selectAllRef = useRef<HTMLInputElement>(null);
   const deleteMenuRef = useRef<HTMLDivElement>(null);
+  const { selectedZone } = useZone();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -105,7 +107,7 @@ export default function TransportRequestsPage() {
     loadRequests(showHidden);
     const interval = setInterval(() => loadRequests(showHidden), 10_000);
     return () => clearInterval(interval);
-  }, [showHidden]);
+  }, [showHidden, selectedZone]);
 
   useEffect(() => { setSelectedIds(new Set()); }, [statusFilter, search, temporalFilter, dateRange, showHidden]);
 
@@ -220,7 +222,7 @@ export default function TransportRequestsPage() {
     finally { setBulkActioning(false); }
   };
 
-  const formatCurrency = (amount: number) => `${amount.toLocaleString('fr-FR')} EGP`;
+  const formatCurrency = (amount: number, currency?: string) => `${amount.toLocaleString('fr-FR')} ${currency ?? ''}`.trim();
   const formatDistance = (km: number) => `${km.toFixed(1)} km`;
 
   return (
@@ -384,7 +386,7 @@ export default function TransportRequestsPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{formatCurrency(request.totalPrice)}</div>
+                        <div className="text-sm font-medium text-gray-900">{formatCurrency(request.totalPrice, (request as any).currency)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <StatusBadge status={request.status} config={STATUS_CONFIG} />

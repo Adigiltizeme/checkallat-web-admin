@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useZone } from '@/contexts/ZoneContext';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -11,6 +12,7 @@ export default function ProductsPage() {
   const [filters, setFilters] = useState({ status: 'all', search: '' });
   const [searchInput, setSearchInput] = useState('');
   const { formatCurrency } = useCurrency();
+  const { selectedZone } = useZone();
 
   const loadProducts = (isInitialLoad = false) => {
     if (isInitialLoad) setLoading(true); else setFetching(true);
@@ -27,7 +29,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     loadProducts(loading);
-  }, [filters.search, filters.status]);
+  }, [filters.search, filters.status, selectedZone]);
 
   const handleModerate = async (productId: string, approved: boolean) => {
     if (!confirm(`Êtes-vous sûr de vouloir ${approved ? 'approuver' : 'rejeter'} ce produit ?`)) {

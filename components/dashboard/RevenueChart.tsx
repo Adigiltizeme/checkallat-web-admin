@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiClient } from '@/lib/api';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface RevenueData {
   date: string;
@@ -12,13 +13,16 @@ interface RevenueData {
 export function RevenueChart() {
   const [data, setData] = useState<RevenueData[]>([]);
   const [loading, setLoading] = useState(true);
+  const { selectedZone } = useZone();
 
   useEffect(() => {
-    apiClient.get<RevenueData[]>('/admin/revenue-chart')
+    setLoading(true);
+    const params = selectedZone ? { zone: selectedZone } : {};
+    apiClient.get<RevenueData[]>('/admin/revenue-chart', { params })
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedZone]);
 
   if (loading) {
     return <div className="h-[300px] flex items-center justify-center">Chargement...</div>;

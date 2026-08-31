@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { Modal } from '@/components/ui/Modal';
 import { SellerForm } from '@/components/forms/SellerForm';
+import { useZone } from '@/contexts/ZoneContext';
 
 export default function SellersPage() {
   const [sellers, setSellers] = useState([]);
@@ -14,6 +15,7 @@ export default function SellersPage() {
   const [searchInput, setSearchInput] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState<any>(null);
+  const { selectedZone } = useZone();
 
   const loadSellers = (isInitialLoad = false) => {
     if (isInitialLoad) setLoading(true); else setFetching(true);
@@ -31,7 +33,7 @@ export default function SellersPage() {
 
   useEffect(() => {
     loadSellers(loading);
-  }, [filters.search, filters.status]);
+  }, [filters.search, filters.status, selectedZone]);
 
   const handleValidate = async (sellerId: string, approved: boolean) => {
     if (!confirm(`Êtes-vous sûr de vouloir ${approved ? 'approuver' : 'rejeter'} ce vendeur ?`)) {

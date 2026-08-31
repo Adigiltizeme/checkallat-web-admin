@@ -5,12 +5,14 @@ import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useZone } from '@/contexts/ZoneContext';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Transaction {
   id: string;
   amount: number;
+  currency?: string | null;
   paymentMethod: string;
   type: string;
   status: string;
@@ -37,6 +39,7 @@ interface DateRange {
 interface CashTransportReq {
   id: string;
   totalPrice: number;
+  currency?: string | null;
   cashCommissionRate: number | null;
   cashCommissionAmount: number | null;
   cashNetAmount: number | null;
@@ -60,6 +63,7 @@ interface DriverCommissionData { drivers: DriverCommission[]; totalPending: numb
 interface CashBooking {
   id: string;
   finalPrice: number | null;
+  currency?: string | null;
   cashCommissionRate: number | null;
   cashCommissionAmount: number | null;
   cashNetAmount: number | null;
@@ -124,8 +128,20 @@ export default function TransactionsPage() {
   const [collectingProId, setCollectingProId] = useState<string | null>(null);
   const [blockingProId, setBlockingProId] = useState<string | null>(null);
 
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, isMixed, exchangeRates, baseCurrency, currency } = useCurrency();
   const { settings } = useSettings();
+  const { selectedZone } = useZone();
+
+  // Conversion vers devise de base pour les totaux multi-zones
+  const toBase = (amount: number, cur?: string | null): number => {
+    const c = cur || baseCurrency;
+    if (!isMixed || c === baseCurrency) return amount;
+    const rate = exchangeRates[c];
+    const baseRate = exchangeRates[baseCurrency] || 1;
+    return rate ? amount * baseRate / rate : amount;
+  };
+  const fmtTotal = (amount: number) =>
+    isMixed ? formatCurrency(amount, baseCurrency || currency) : formatCurrency(amount);
   const transportRate = settings?.commissionRates?.['moving_transport']?.standard ?? 10;
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -149,7 +165,7 @@ export default function TransactionsPage() {
     fetch();
     const iv = setInterval(fetch, 10000);
     return () => clearInterval(iv);
-  }, [categoryFilter]);
+  }, [categoryFilter, selectedZone]);
 
   const loadDriverCommissions = useCallback(() => {
     setLoadingDrivers(true);
@@ -214,9 +230,9 @@ export default function TransactionsPage() {
     return r;
   }, [allTransactions, typeFilter, paymentFilter, temporalFilter, dateRange, todayStr, thisMonthPrefix]);
 
-  const totalAmount = filteredTransactions.reduce((s, tx) => s + tx.amount, 0);
-  const cashTotal   = filteredTransactions.filter(t => t.paymentMethod === 'cash' || t.paymentMethod.startsWith('cash')).reduce((s, t) => s + t.amount, 0);
-  const inAppTotal  = filteredTransactions.filter(t => t.paymentMethod === 'in_app').reduce((s, t) => s + t.amount, 0);
+  const totalAmount = filteredTransactions.reduce((s, tx) => s + toBase(tx.amount, tx.currency), 0);
+  const cashTotal   = filteredTransactions.filter(t => t.paymentMethod === 'cash' || t.paymentMethod.startsWith('cash')).reduce((s, t) => s + toBase(t.amount, t.currency), 0);
+  const inAppTotal  = filteredTransactions.filter(t => t.paymentMethod === 'in_app').reduce((s, t) => s + toBase(t.amount, t.currency), 0);
 
   // Stats par type
   const statsByType = useMemo(() => {
@@ -224,14 +240,14 @@ export default function TransactionsPage() {
     for (const tx of filteredTransactions) {
       if (!r[tx.type]) r[tx.type] = { count: 0, total: 0 };
       r[tx.type].count++;
-      r[tx.type].total += tx.amount;
+      r[tx.type].total += toBase(tx.amount, tx.currency);
     }
     return r;
   }, [filteredTransactions]);
 
   // ── Driver actions ─────────────────────────────────────────────────────────
   const handleCollectDriver = async (driver: DriverCommission) => {
-    if (!confirm(`Confirmer la collecte de ${formatCurrency(driver.pendingCashCommission)} auprès de ${driver.user.firstName} ${driver.user.lastName} ?`)) return;
+    if (!confirm(`Confirmer la collecte de ${fmtTotal(driver.pendingCashCommission)} auprès de ${driver.user.firstName} ${driver.user.lastName} ?`)) return;
     setCollectingDriverId(driver.id);
     try { await apiClient.post(`/admin/drivers/${driver.id}/collect-commission`, {}); loadDriverCommissions(); }
     catch { alert('Erreur lors de l\'encaissement'); }
@@ -254,7 +270,7 @@ export default function TransactionsPage() {
 
   // ── Pro actions ────────────────────────────────────────────────────────────
   const handleCollectPro = async (pro: ProCommission) => {
-    if (!confirm(`Confirmer la collecte de ${formatCurrency(pro.totalCommission)} auprès de ${pro.proName} ?`)) return;
+    if (!confirm(`Confirmer la collecte de ${fmtTotal(pro.totalCommission)} auprès de ${pro.proName} ?`)) return;
     setCollectingProId(pro.proId);
     try { await apiClient.post(`/admin/pros/${pro.proId}/collect-commission`, {}); loadProCommissions(); }
     catch { alert('Erreur lors de l\'encaissement'); }
@@ -288,7 +304,7 @@ export default function TransactionsPage() {
       <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
         {([
           { key: 'transactions', label: 'Transactions' },
-          { key: 'commissions',  label: `Commissions cash${totalCommPending > 0 ? ` · ${formatCurrency(totalCommPending)}` : ''}` },
+          { key: 'commissions',  label: `Commissions cash${totalCommPending > 0 ? ` · ${fmtTotal(totalCommPending)}` : ''}` },
         ] as { key: MainTab; label: string }[]).map(({ key, label }) => (
           <button key={key} onClick={() => setMainTab(key)}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${mainTab === key ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-800'}`}>
@@ -304,16 +320,16 @@ export default function TransactionsPage() {
           <div className="grid gap-4 md:grid-cols-4">
             <div className="bg-white rounded-lg shadow p-5">
               <p className="text-sm text-gray-500">Volume total affiché</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalAmount)}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{filteredTransactions.length} transactions</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{fmtTotal(totalAmount)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{filteredTransactions.length} transactions{isMixed ? ` · ≈ ${baseCurrency || currency}` : ''}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-5">
               <p className="text-sm text-gray-500">Cash</p>
-              <p className="text-2xl font-bold text-orange-600 mt-1">{formatCurrency(cashTotal)}</p>
+              <p className="text-2xl font-bold text-orange-600 mt-1">{fmtTotal(cashTotal)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-5">
               <p className="text-sm text-gray-500">In-App</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">{formatCurrency(inAppTotal)}</p>
+              <p className="text-2xl font-bold text-blue-600 mt-1">{fmtTotal(inAppTotal)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-5">
               <p className="text-sm text-gray-500 mb-1">Répartition</p>
@@ -324,7 +340,7 @@ export default function TransactionsPage() {
                 return (
                   <div key={t} className="flex justify-between text-xs mt-0.5">
                     <span className="text-gray-500">{cfg.icon} {cfg.label}</span>
-                    <span className="font-medium">{formatCurrency(s.total)} <span className="text-gray-400">({s.count})</span></span>
+                    <span className="font-medium">{fmtTotal(s.total)} <span className="text-gray-400">({s.count})</span></span>
                   </div>
                 );
               })}
@@ -436,7 +452,7 @@ export default function TransactionsPage() {
                         </td>
                         <td className="px-5 py-4 text-sm text-gray-700">{tx.participant || <span className="text-gray-300">—</span>}</td>
                         <td className="px-5 py-4 text-xs text-gray-500 max-w-[160px] truncate">{tx.reference || '—'}</td>
-                        <td className="px-5 py-4 text-sm font-semibold text-gray-900">{formatCurrency(tx.amount)}</td>
+                        <td className="px-5 py-4 text-sm font-semibold text-gray-900">{formatCurrency(tx.amount, tx.currency ?? undefined)}</td>
                         <td className="px-5 py-4">
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${tx.paymentMethod === 'cash' || tx.paymentMethod.startsWith('cash') ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>
                             {METHOD_LABELS[tx.paymentMethod] ?? tx.paymentMethod}
@@ -467,8 +483,8 @@ export default function TransactionsPage() {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-6">
               {([
-                { key: 'drivers', label: `🚚 Chauffeurs${driverData?.totalPending ? ` · ${formatCurrency(driverData.totalPending)}` : ''}` },
-                { key: 'pros',    label: `🔧 Prestataires services${proData?.totalPending ? ` · ${formatCurrency(proData.totalPending)}` : ''}` },
+                { key: 'drivers', label: `🚚 Chauffeurs${driverData?.totalPending ? ` · ${fmtTotal(driverData.totalPending)}` : ''}` },
+                { key: 'pros',    label: `🔧 Prestataires services${proData?.totalPending ? ` · ${fmtTotal(proData.totalPending)}` : ''}` },
               ] as { key: CommTab; label: string }[]).map(({ key, label }) => (
                 <button key={key} onClick={() => setCommTab(key)}
                   className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${commTab === key ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
@@ -486,7 +502,7 @@ export default function TransactionsPage() {
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="bg-white rounded-lg shadow p-5">
                       <p className="text-sm text-gray-500">Total en attente</p>
-                      <p className="text-2xl font-bold text-orange-600 mt-1">{formatCurrency(driverData?.totalPending ?? 0)}</p>
+                      <p className="text-2xl font-bold text-orange-600 mt-1">{fmtTotal(driverData?.totalPending ?? 0)}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{driverData?.drivers.length ?? 0} chauffeur(s)</p>
                     </div>
                     <div className="bg-white rounded-lg shadow p-5">
@@ -516,11 +532,11 @@ export default function TransactionsPage() {
                                 <div className="text-sm text-gray-500">{driver.user.phone} · {driver.vehiclePlate}</div>
                               </div>
                               <div className="text-center">
-                                <div className="text-xl font-bold text-orange-600">{formatCurrency(driver.pendingCashCommission)}</div>
+                                <div className="text-xl font-bold text-orange-600">{fmtTotal(driver.pendingCashCommission)}</div>
                                 <div className="text-xs text-gray-400">en attente</div>
                               </div>
                               <div className="text-center">
-                                <div className="text-sm font-medium text-green-600">{formatCurrency(driver.totalCashCommissionPaid)}</div>
+                                <div className="text-sm font-medium text-green-600">{fmtTotal(driver.totalCashCommissionPaid)}</div>
                                 <div className="text-xs text-gray-400">collecté</div>
                               </div>
                             </div>
@@ -555,9 +571,9 @@ export default function TransactionsPage() {
                                         <div className="truncate text-gray-700">📍 {req.pickupAddress}</div>
                                         <div className="truncate text-gray-500">🏁 {req.deliveryAddress}</div>
                                       </td>
-                                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{formatCurrency(req.totalPrice)}</td>
-                                      <td className="px-4 py-3 text-sm font-medium text-orange-600">{req.cashCommissionAmount != null ? formatCurrency(req.cashCommissionAmount) : '—'}</td>
-                                      <td className="px-4 py-3 text-sm font-medium text-green-600">{req.cashNetAmount != null ? formatCurrency(req.cashNetAmount) : '—'}</td>
+                                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{formatCurrency(req.totalPrice, req.currency ?? undefined)}</td>
+                                      <td className="px-4 py-3 text-sm font-medium text-orange-600">{req.cashCommissionAmount != null ? formatCurrency(req.cashCommissionAmount, req.currency ?? undefined) : '—'}</td>
+                                      <td className="px-4 py-3 text-sm font-medium text-green-600">{req.cashNetAmount != null ? formatCurrency(req.cashNetAmount, req.currency ?? undefined) : '—'}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -581,7 +597,7 @@ export default function TransactionsPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="bg-white rounded-lg shadow p-5">
                       <p className="text-sm text-gray-500">Total commissions services</p>
-                      <p className="text-2xl font-bold text-orange-600 mt-1">{formatCurrency(proData?.totalPending ?? 0)}</p>
+                      <p className="text-2xl font-bold text-orange-600 mt-1">{fmtTotal(proData?.totalPending ?? 0)}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{proData?.pros.length ?? 0} prestataire(s) concerné(s)</p>
                     </div>
                     <div className="bg-white rounded-lg shadow p-5">
@@ -613,7 +629,7 @@ export default function TransactionsPage() {
                                 )}
                               </div>
                               <div className="text-center">
-                                <div className="text-xl font-bold text-orange-600">{formatCurrency(pro.totalCommission)}</div>
+                                <div className="text-xl font-bold text-orange-600">{fmtTotal(pro.totalCommission)}</div>
                                 <div className="text-xs text-gray-400">commission totale</div>
                               </div>
                               <div className="text-center">
@@ -649,10 +665,10 @@ export default function TransactionsPage() {
                                     <tr key={b.id} className="hover:bg-gray-50">
                                       <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{formatDateTime(b.updatedAt)}</td>
                                       <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">📍 {b.address}</td>
-                                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{b.finalPrice != null ? formatCurrency(b.finalPrice) : '—'}</td>
+                                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{b.finalPrice != null ? formatCurrency(b.finalPrice, b.currency ?? undefined) : '—'}</td>
                                       <td className="px-4 py-3 text-sm text-gray-500">{b.cashCommissionRate != null ? `${b.cashCommissionRate}%` : '—'}</td>
-                                      <td className="px-4 py-3 text-sm font-medium text-orange-600">{b.cashCommissionAmount != null ? formatCurrency(b.cashCommissionAmount) : '—'}</td>
-                                      <td className="px-4 py-3 text-sm font-medium text-green-600">{b.cashNetAmount != null ? formatCurrency(b.cashNetAmount) : '—'}</td>
+                                      <td className="px-4 py-3 text-sm font-medium text-orange-600">{b.cashCommissionAmount != null ? formatCurrency(b.cashCommissionAmount, b.currency ?? undefined) : '—'}</td>
+                                      <td className="px-4 py-3 text-sm font-medium text-green-600">{b.cashNetAmount != null ? formatCurrency(b.cashNetAmount, b.currency ?? undefined) : '—'}</td>
                                     </tr>
                                   ))}
                                 </tbody>

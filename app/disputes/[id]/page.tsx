@@ -111,7 +111,7 @@ export default function DisputeDetailPage() {
               <div>
                 <span className="font-medium text-gray-700">Montant de la réservation:</span>
                 <span className="ml-2 text-gray-900">
-                  {formatCurrency(dispute.booking.finalPrice)}
+                  {formatCurrency(dispute.booking.finalPrice, dispute.booking.currency)}
                 </span>
               </div>
             )}
@@ -119,7 +119,7 @@ export default function DisputeDetailPage() {
               <div>
                 <span className="font-medium text-gray-700">Montant du remboursement:</span>
                 <span className="ml-2 text-green-600 font-semibold">
-                  {formatCurrency(dispute.refundAmount)}
+                  {formatCurrency(dispute.refundAmount, dispute.booking?.currency ?? dispute.transportRequest?.currency)}
                 </span>
               </div>
             )}

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiClient } from '@/lib/api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import { useZone } from '@/contexts/ZoneContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,7 +73,7 @@ function groupExtras(items: ExtraItem[], categoryMeta: Record<string, CategoryMe
         nameFr: meta?.nameFr ?? category.nameFr,
         icon: meta?.icon ?? '🔧',
         adminBasePrice: meta?.basePrice ?? null,
-        currency: meta?.currency ?? 'EGP',
+        currency: meta?.currency ?? null,
         extras: [],
       });
     }
@@ -95,11 +96,13 @@ function groupExtras(items: ExtraItem[], categoryMeta: Record<string, CategoryMe
 
 function ExtraRow({
   extra,
+  currency,
   actionLoading,
   onApprove,
   onReject,
 }: {
   extra: ExtraItem;
+  currency: string | null;
   actionLoading: string | null;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
@@ -127,7 +130,7 @@ function ExtraRow({
       {/* Prix */}
       <div className="text-right flex-shrink-0 w-24">
         <p className="font-bold text-gray-900 text-sm">+{extra.price.toFixed(2)}</p>
-        <p className="text-xs text-gray-400">{extra.offering.category.slug === 'eg' ? 'EGP' : 'EGP'}</p>
+        <p className="text-xs text-gray-400">{currency ?? ''}</p>
       </div>
 
       {/* Actions */}
@@ -194,7 +197,7 @@ function CategoryBlock({
             <div>
               <p className="text-xs text-gray-400 leading-none mb-0.5">Prix de base (admin)</p>
               <p className="text-sm font-semibold text-gray-700">
-                {group.adminBasePrice.toFixed(2)} <span className="text-gray-400 font-normal">{group.currency ?? 'EGP'}</span>
+                {group.adminBasePrice.toFixed(2)} <span className="text-gray-400 font-normal">{group.currency ?? ''}</span>
               </p>
             </div>
           )}
@@ -202,7 +205,7 @@ function CategoryBlock({
             <div>
               <p className="text-xs text-gray-400 leading-none mb-0.5">Total si approuvés</p>
               <p className="text-sm font-bold text-emerald-600">
-                {total.toFixed(2)} <span className="text-emerald-400 font-normal">{group.currency ?? 'EGP'}</span>
+                {total.toFixed(2)} <span className="text-emerald-400 font-normal">{group.currency ?? ''}</span>
               </p>
             </div>
           )}
@@ -230,6 +233,7 @@ function CategoryBlock({
             <ExtraRow
               key={extra.id}
               extra={extra}
+              currency={group.currency}
               actionLoading={actionLoading}
               onApprove={onApprove}
               onReject={onReject}
@@ -250,6 +254,7 @@ function CategoryBlock({
             <ExtraRow
               key={extra.id}
               extra={extra}
+              currency={group.currency}
               actionLoading={actionLoading}
               onApprove={onApprove}
               onReject={onReject}
@@ -271,6 +276,7 @@ export default function ExtrasReviewPage() {
   const [rejectModalId, setRejectModalId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState('');
   const [search, setSearch] = useState('');
+  const { selectedZone } = useZone();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -290,7 +296,7 @@ export default function ExtrasReviewPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedZone]);
 
   useEffect(() => { load(); }, [load]);
 

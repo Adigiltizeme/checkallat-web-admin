@@ -1,48 +1,44 @@
 import { useSettings } from '@/contexts/SettingsContext';
+import { useZone } from '@/contexts/ZoneContext';
 import { formatCurrency as formatCurrencyUtil, formatCurrencyCompact as formatCurrencyCompactUtil } from '@/lib/utils';
 
-/**
- * Hook personnalisé pour formater les montants avec conversion de devise
- */
 export function useCurrency() {
   const { settings } = useSettings();
-  const currency = settings?.currency || 'EGP';
-  const baseCurrency = settings?.baseCurrency || 'EGP';
-  const exchangeRates = settings?.exchangeRates || { EGP: 1 };
+  const { selectedZoneObj } = useZone();
 
-  /**
-   * Convertit un montant de la devise de base vers la devise d'affichage
-   * @param amount - Montant dans la devise de base (baseCurrency)
-   * @returns Montant converti dans la devise d'affichage (currency)
-   */
+  const globalCurrency = settings?.currency ?? '';
+  const baseCurrency = settings?.baseCurrency ?? '';
+  const exchangeRates = (settings?.exchangeRates as Record<string, number>) || {};
+
+  // Quand une zone est sélectionnée, les montants sont déjà dans la devise de la zone
+  // — pas de conversion nécessaire. Sans zone, on applique le taux global.
+  const zoneCurrency = selectedZoneObj?.currency ?? '';
+  const currency = zoneCurrency || globalCurrency;
+  const isMixed = !zoneCurrency && !!globalCurrency; // données multi-zones affichées ensemble
+
   const convertAmount = (amount: number): number => {
-    if (baseCurrency === currency) {
-      return amount; // Pas de conversion nécessaire
-    }
-
-    const rate = exchangeRates[currency];
-    if (!rate) {
-      console.warn(`Exchange rate not found for ${currency}, using base currency`);
-      return amount;
-    }
-
+    if (zoneCurrency) return amount; // déjà dans la bonne devise
+    if (baseCurrency === globalCurrency) return amount;
+    const rate = exchangeRates[globalCurrency];
+    if (!rate) return amount;
     return amount * rate;
   };
 
-  const formatCurrency = (amountInBaseCurrency: number) => {
-    const convertedAmount = convertAmount(amountInBaseCurrency);
-    return formatCurrencyUtil(convertedAmount, currency);
+  const formatCurrency = (amount: number, overrideCurrency?: string) => {
+    if (overrideCurrency) return formatCurrencyUtil(amount, overrideCurrency);
+    return formatCurrencyUtil(convertAmount(amount), currency);
   };
 
-  const formatCurrencyCompact = (amountInBaseCurrency: number) => {
-    const convertedAmount = convertAmount(amountInBaseCurrency);
-    return formatCurrencyCompactUtil(convertedAmount, currency);
+  const formatCurrencyCompact = (amount: number, overrideCurrency?: string) => {
+    if (overrideCurrency) return formatCurrencyCompactUtil(amount, overrideCurrency);
+    return formatCurrencyCompactUtil(convertAmount(amount), currency);
   };
 
   return {
     currency,
     baseCurrency,
     exchangeRates,
+    isMixed,
     convertAmount,
     formatCurrency,
     formatCurrencyCompact,

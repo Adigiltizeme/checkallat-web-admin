@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import Link from 'next/link';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface ActivityStats {
   total: number;
@@ -43,6 +44,7 @@ interface GlobalStats {
 }
 
 interface PaymentStats {
+  revenueBaseCurrency?: string;
   global: GlobalStats;
   transport: ActivityStats;
   services: ActivityStats;
@@ -71,12 +73,20 @@ export default function PaymentStatsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const { formatCurrency } = useCurrency();
+  const { selectedZone } = useZone();
+
+  // Si revenueBaseCurrency est défini, les montants sont déjà convertis dans cette devise par le backend
+  const fmtStats = (amount: number) =>
+    stats?.revenueBaseCurrency
+      ? formatCurrency(amount, stats.revenueBaseCurrency)
+      : formatCurrency(amount);
 
   const load = useCallback(async () => {
     try {
+      const zoneParams = selectedZone ? { zone: selectedZone } : {};
       const [statsData, transportsData, driversData]: [any, any, any] = await Promise.all([
-        apiClient.get('/admin/payment-stats'),
-        apiClient.get('/transport/admin/all'),
+        apiClient.get('/admin/payment-stats', { params: zoneParams }),
+        apiClient.get('/transport/admin/all', { params: zoneParams }),
         apiClient.get('/admin/drivers'),
       ]);
 
@@ -111,7 +121,7 @@ export default function PaymentStatsPage() {
       );
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, []);
+  }, [selectedZone]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -142,10 +152,10 @@ export default function PaymentStatsPage() {
       {/* KPIs globaux */}
       <div className="grid gap-4 md:grid-cols-4">
         {[
-          { label: 'Revenu total',      value: formatCurrency(g.totalRevenue),   color: 'text-gray-900' },
-          { label: 'Paiements cash',    value: formatCurrency(g.cashRevenue),    color: 'text-orange-600' },
-          { label: 'Paiements in-app',  value: formatCurrency(g.inAppRevenue),   color: 'text-blue-600' },
-          { label: 'Commissions cash',  value: formatCurrency(g.cashCommission), color: 'text-green-700' },
+          { label: 'Revenu total',      value: fmtStats(g.totalRevenue),   color: 'text-gray-900' },
+          { label: 'Paiements cash',    value: fmtStats(g.cashRevenue),    color: 'text-orange-600' },
+          { label: 'Paiements in-app',  value: fmtStats(g.inAppRevenue),   color: 'text-blue-600' },
+          { label: 'Commissions cash',  value: fmtStats(g.cashCommission), color: 'text-green-700' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white rounded-lg shadow p-5">
             <p className="text-sm text-gray-500">{label}</p>
@@ -187,14 +197,14 @@ export default function PaymentStatsPage() {
               <h3 className={`font-semibold ${hdr} mb-3`}>{icon} {label}</h3>
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Complétés</span><span className="font-medium">{s.total}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Revenu total</span><span className="font-semibold text-gray-900">{formatCurrency(s.totalRevenue)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Revenu total</span><span className="font-semibold text-gray-900">{fmtStats(s.totalRevenue)}</span></div>
                 <div className="pt-1 border-t border-gray-100 space-y-1">
-                  <div className="flex justify-between"><span className="text-orange-600">Cash ({cashPct.toFixed(0)}%)</span><span className="font-medium text-orange-700">{formatCurrency(s.cashRevenue)}</span></div>
-                  <div className="flex justify-between"><span className="text-blue-600">In-App ({inAppPct.toFixed(0)}%)</span><span className="font-medium text-blue-700">{formatCurrency(s.inAppRevenue)}</span></div>
+                  <div className="flex justify-between"><span className="text-orange-600">Cash ({cashPct.toFixed(0)}%)</span><span className="font-medium text-orange-700">{fmtStats(s.cashRevenue)}</span></div>
+                  <div className="flex justify-between"><span className="text-blue-600">In-App ({inAppPct.toFixed(0)}%)</span><span className="font-medium text-blue-700">{fmtStats(s.inAppRevenue)}</span></div>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-gray-100">
                   <span className="text-gray-500">Commission cash</span>
-                  <span className="font-medium text-green-700">{formatCurrency(s.cashCommission)}</span>
+                  <span className="font-medium text-green-700">{fmtStats(s.cashCommission)}</span>
                 </div>
                 {s.disputedCount > 0 && (
                   <div className="flex justify-between">
@@ -235,7 +245,7 @@ export default function PaymentStatsPage() {
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between"><span className="text-gray-500">Cash confirmés</span><span className="font-medium text-green-600">{s.confirmedCashCount}</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">En litige</span><span className={`font-medium ${s.disputedCount > 0 ? 'text-red-600' : 'text-gray-400'}`}>{s.disputedCount}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Commission due</span><span className="font-medium text-green-700">{formatCurrency(s.cashCommission)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Commission due</span><span className="font-medium text-green-700">{fmtStats(s.cashCommission)}</span></div>
                 </div>
               </div>
             );
@@ -250,12 +260,12 @@ export default function PaymentStatsPage() {
               ].map(({ key, label }) => (
                 <div key={key} className="flex justify-between">
                   <span className="text-gray-500">{label}</span>
-                  <span className="font-medium text-green-700">{formatCurrency((stats[key] as ActivityStats).cashCommission)}</span>
+                  <span className="font-medium text-green-700">{fmtStats((stats[key] as ActivityStats).cashCommission)}</span>
                 </div>
               ))}
               <div className="flex justify-between pt-2 border-t font-semibold">
                 <span>Total</span>
-                <span className="text-green-700">{formatCurrency(g.cashCommission)}</span>
+                <span className="text-green-700">{fmtStats(g.cashCommission)}</span>
               </div>
             </div>
           </div>
@@ -286,8 +296,8 @@ export default function PaymentStatsPage() {
                         <div className="text-xs text-gray-400">{cat.slug}</div>
                       </td>
                       <td className="px-5 py-4 text-sm text-gray-700">{cat.total}</td>
-                      <td className="px-5 py-4 text-sm font-semibold text-gray-900">{formatCurrency(cat.totalRevenue)}</td>
-                      <td className="px-5 py-4 text-sm text-orange-600">{formatCurrency(cat.cashRevenue)} <span className="text-gray-400 text-xs">({cat.cashCount})</span></td>
+                      <td className="px-5 py-4 text-sm font-semibold text-gray-900">{fmtStats(cat.totalRevenue)}</td>
+                      <td className="px-5 py-4 text-sm text-orange-600">{fmtStats(cat.cashRevenue)} <span className="text-gray-400 text-xs">({cat.cashCount})</span></td>
                       <td className="px-5 py-4 text-sm">
                         <div className="flex items-center gap-2">
                           <div className="w-16 bg-gray-200 rounded-full h-1.5">
@@ -296,8 +306,8 @@ export default function PaymentStatsPage() {
                           <span className="text-xs font-medium">{cashPct.toFixed(0)}%</span>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-sm text-blue-600">{formatCurrency(cat.inAppRevenue)} <span className="text-gray-400 text-xs">({cat.inAppCount})</span></td>
-                      <td className="px-5 py-4 text-sm font-medium text-green-700">{formatCurrency(cat.cashCommission)}</td>
+                      <td className="px-5 py-4 text-sm text-blue-600">{fmtStats(cat.inAppRevenue)} <span className="text-gray-400 text-xs">({cat.inAppCount})</span></td>
+                      <td className="px-5 py-4 text-sm font-medium text-green-700">{fmtStats(cat.cashCommission)}</td>
                       <td className="px-5 py-4 text-sm">
                         {cat.disputedCount > 0
                           ? <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">{cat.disputedCount}</span>
@@ -311,11 +321,11 @@ export default function PaymentStatsPage() {
                 <tr className="bg-gray-50 font-semibold">
                   <td className="px-5 py-4 text-sm text-gray-700">Total services</td>
                   <td className="px-5 py-4 text-sm">{stats.services.total}</td>
-                  <td className="px-5 py-4 text-sm text-gray-900">{formatCurrency(stats.services.totalRevenue)}</td>
-                  <td className="px-5 py-4 text-sm text-orange-600">{formatCurrency(stats.services.cashRevenue)}</td>
+                  <td className="px-5 py-4 text-sm text-gray-900">{fmtStats(stats.services.totalRevenue)}</td>
+                  <td className="px-5 py-4 text-sm text-orange-600">{fmtStats(stats.services.cashRevenue)}</td>
                   <td className="px-5 py-4 text-sm">{stats.services.total > 0 ? (stats.services.cashCount / stats.services.total * 100).toFixed(0) : 0}%</td>
-                  <td className="px-5 py-4 text-sm text-blue-600">{formatCurrency(stats.services.inAppRevenue)}</td>
-                  <td className="px-5 py-4 text-sm text-green-700">{formatCurrency(stats.services.cashCommission)}</td>
+                  <td className="px-5 py-4 text-sm text-blue-600">{fmtStats(stats.services.inAppRevenue)}</td>
+                  <td className="px-5 py-4 text-sm text-green-700">{fmtStats(stats.services.cashCommission)}</td>
                   <td className="px-5 py-4 text-sm text-red-600">{stats.services.disputedCount || '—'}</td>
                 </tr>
               </tbody>
@@ -345,9 +355,9 @@ export default function PaymentStatsPage() {
                     <tr key={mt.type} className="hover:bg-gray-50">
                       <td className="px-5 py-4 text-sm font-medium text-gray-900 capitalize">{mt.type || '—'}</td>
                       <td className="px-5 py-4 text-sm text-gray-700">{mt.total}</td>
-                      <td className="px-5 py-4 text-sm font-semibold text-gray-900">{formatCurrency(mt.totalRevenue)}</td>
-                      <td className="px-5 py-4 text-sm text-orange-600">{formatCurrency(mt.cashRevenue)} <span className="text-gray-400 text-xs">({mt.cashCount})</span></td>
-                      <td className="px-5 py-4 text-sm text-blue-600">{formatCurrency(mt.inAppRevenue)} <span className="text-gray-400 text-xs">({mt.inAppCount})</span></td>
+                      <td className="px-5 py-4 text-sm font-semibold text-gray-900">{fmtStats(mt.totalRevenue)}</td>
+                      <td className="px-5 py-4 text-sm text-orange-600">{fmtStats(mt.cashRevenue)} <span className="text-gray-400 text-xs">({mt.cashCount})</span></td>
+                      <td className="px-5 py-4 text-sm text-blue-600">{fmtStats(mt.inAppRevenue)} <span className="text-gray-400 text-xs">({mt.inAppCount})</span></td>
                       <td className="px-5 py-4 text-sm">
                         <div className="flex items-center gap-2">
                           <div className="w-16 bg-gray-200 rounded-full h-1.5">
@@ -362,9 +372,9 @@ export default function PaymentStatsPage() {
                 <tr className="bg-gray-50 font-semibold">
                   <td className="px-5 py-4 text-sm text-gray-700">Total marketplace</td>
                   <td className="px-5 py-4 text-sm">{stats.marketplace.total}</td>
-                  <td className="px-5 py-4 text-sm text-gray-900">{formatCurrency(stats.marketplace.totalRevenue)}</td>
-                  <td className="px-5 py-4 text-sm text-orange-600">{formatCurrency(stats.marketplace.cashRevenue)}</td>
-                  <td className="px-5 py-4 text-sm text-blue-600">{formatCurrency(stats.marketplace.inAppRevenue)}</td>
+                  <td className="px-5 py-4 text-sm text-gray-900">{fmtStats(stats.marketplace.totalRevenue)}</td>
+                  <td className="px-5 py-4 text-sm text-orange-600">{fmtStats(stats.marketplace.cashRevenue)}</td>
+                  <td className="px-5 py-4 text-sm text-blue-600">{fmtStats(stats.marketplace.inAppRevenue)}</td>
                   <td className="px-5 py-4 text-sm">{stats.marketplace.total > 0 ? (stats.marketplace.cashCount / stats.marketplace.total * 100).toFixed(0) : 0}%</td>
                 </tr>
               </tbody>

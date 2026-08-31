@@ -67,6 +67,20 @@ export const SUPPORTED_CURRENCIES = {
     locale: 'ar-AE',
     market: 'Émirats Arabes Unis',
   },
+  GBP: {
+    code: 'GBP',
+    name: 'Livre sterling',
+    symbol: '£',
+    locale: 'en-GB',
+    market: 'Royaume-Uni',
+  },
+  XAF: {
+    code: 'XAF',
+    name: 'Franc CFA (Afrique Centrale)',
+    symbol: 'FCFA',
+    locale: 'fr-CM',
+    market: 'Afrique Centrale',
+  },
 } as const;
 
 // Devise par défaut (MVP Égypte)

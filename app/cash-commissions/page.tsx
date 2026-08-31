@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface CashRequest {
   id: string;
@@ -69,6 +70,7 @@ export default function CashCommissionsPage() {
   const [expandedProId, setExpandedProId] = useState<string | null>(null);
   const { formatCurrency } = useCurrency();
   const { settings } = useSettings();
+  const { selectedZone } = useZone();
   const transportCommissionRate = settings?.commissionRates?.['moving_transport']?.standard ?? 10;
 
   const load = useCallback(() => {
@@ -79,7 +81,7 @@ export default function CashCommissionsPage() {
       .then(([drivers, pros]: any[]) => { setData(drivers); setProsData(pros); })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedZone]);
 
   useEffect(() => {
     load();

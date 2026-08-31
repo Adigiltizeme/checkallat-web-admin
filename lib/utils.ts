@@ -14,10 +14,10 @@ export function cn(...inputs: ClassValue[]) {
  */
 export const formatCurrency = (
   amount: number,
-  currency: string = 'EGP',
+  currency?: string,
   locale?: string
 ) => {
-  // Détection automatique du locale selon la devise si non fourni
+  if (!currency) return `${amount.toFixed(2)} —`;
   const autoLocale = locale || getCurrencyLocale(currency);
 
   try {
@@ -28,7 +28,6 @@ export const formatCurrency = (
       maximumFractionDigits: 2,
     }).format(amount);
   } catch (error) {
-    // Fallback si la devise n'est pas supportée
     console.warn(`Currency ${currency} not supported, falling back to symbol format`);
     return `${amount.toFixed(2)} ${currency}`;
   }
@@ -56,16 +55,21 @@ function getCurrencyLocale(currency: string): string {
 /**
  * Version simplifiée pour affichage compact (sans décimales si entier)
  */
-export const formatCurrencyCompact = (amount: number, currency: string = 'EGP') => {
+export const formatCurrencyCompact = (amount: number, currency?: string) => {
+  if (!currency) return `${amount.toFixed(2)} —`;
   const isInteger = amount % 1 === 0;
   const locale = getCurrencyLocale(currency);
 
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: isInteger ? 0 : 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: isInteger ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${currency}`;
+  }
 };
 
 export const formatDateTime = (date: Date | string) => {

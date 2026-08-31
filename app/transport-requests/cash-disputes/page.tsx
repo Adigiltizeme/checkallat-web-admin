@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useZone } from '@/contexts/ZoneContext';
 
 type Tab = 'transport' | 'services';
 
@@ -14,6 +15,7 @@ export default function CashDisputesPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('transport');
   const { formatCurrency } = useCurrency();
+  const { selectedZone } = useZone();
 
   const load = useCallback(() => {
     apiClient.get('/admin/cash-disputes')
@@ -23,7 +25,7 @@ export default function CashDisputesPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedZone]);
 
   useEffect(() => { load(); }, [load]);
 

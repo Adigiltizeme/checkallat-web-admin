@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { Modal } from '@/components/ui/Modal';
 import { DriverForm } from '@/components/forms/DriverForm';
+import { useZone } from '@/contexts/ZoneContext';
 
 export default function DriversPage() {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -17,6 +18,7 @@ export default function DriversPage() {
   const [searchInput, setSearchInput] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<any>(null);
+  const { selectedZone } = useZone();
 
   const loadDrivers = (isInitialLoad = false) => {
     if (isInitialLoad) {
@@ -47,7 +49,7 @@ export default function DriversPage() {
     loadDrivers(loading);
     const interval = setInterval(() => loadDrivers(false), 10000);
     return () => clearInterval(interval);
-  }, [filters.search, filters.status]);
+  }, [filters.search, filters.status, selectedZone]);
 
   const handleValidate = async (driverId: string, approved: boolean) => {
     if (!confirm(`Êtes-vous sûr de vouloir ${approved ? 'approuver' : 'rejeter'} ce chauffeur ?`)) {

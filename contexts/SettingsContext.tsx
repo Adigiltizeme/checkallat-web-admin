@@ -2,7 +2,17 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiClient } from '@/lib/api';
-import { getAccessToken } from '@/lib/auth';
+import { isAuthenticated } from '@/lib/auth';
+
+export interface ServiceZone {
+  id: string;
+  name?: string;
+  nameFr?: string;
+  nameEn?: string;
+  currency: string;
+  countries: string[];
+  flag?: string;
+}
 
 interface PlatformSettings {
   minBookingAmount: number;
@@ -13,6 +23,7 @@ interface PlatformSettings {
   supportPhone: string;
   exchangeRates: Record<string, number>;
   commissionRates: Record<string, { standard: number; premium: number }>;
+  serviceZones?: ServiceZone[];
 }
 
 interface SettingsContextType {
@@ -39,11 +50,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (getAccessToken()) {
-      loadSettings();
-    } else {
+    if (!isAuthenticated()) {
       setLoading(false);
+      return;
     }
+    loadSettings();
   }, []);
 
   const refreshSettings = async () => {

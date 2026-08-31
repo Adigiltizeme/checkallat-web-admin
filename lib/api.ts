@@ -14,6 +14,15 @@ function processQueue(token: string) {
 
 class ApiClient {
   private client: AxiosInstance;
+  private _zone = '';
+
+  setZone(zone: string) {
+    this._zone = zone;
+  }
+
+  getZone(): string {
+    return this._zone;
+  }
 
   constructor() {
     this.client = axios.create({
@@ -23,12 +32,16 @@ class ApiClient {
       },
     });
 
-    // Request interceptor (add token + CSRF header)
+    // Request interceptor (add token + CSRF header + zone)
     this.client.interceptors.request.use(
       (config) => {
         const token = getAccessToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+        }
+        // Inject zone on all GET requests when a zone is selected
+        if (this._zone && (config.method ?? '').toLowerCase() === 'get') {
+          config.params = { zone: this._zone, ...config.params };
         }
         // Protection CSRF : les requêtes cross-site ne peuvent pas envoyer
         // de headers personnalisés — ce header suffit à bloquer les attaques CSRF.

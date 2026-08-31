@@ -14,6 +14,7 @@ import { BulkActionBar } from '@/components/shared/BulkActionBar';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { CategoryTabs, CategoryTabItem } from '@/components/shared/CategoryTabs';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface Booking {
   id: string;
@@ -58,7 +59,11 @@ export default function BookingsPage() {
   const [dateRange, setDateRange]             = useState<DateRange>(DATE_RANGE_EMPTY);
   const [selectedIds, setSelectedIds]         = useState<Set<string>>(new Set());
   const [bulkActioning, setBulkActioning]     = useState(false);
+  const [actioningId, setActioningId]         = useState<string | null>(null);
+  const [deleteMenuId, setDeleteMenuId]       = useState<string | null>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
+  const deleteMenuRef = useRef<HTMLDivElement>(null);
+  const { selectedZone } = useZone();
 
   const loadBookings = () => {
     apiClient
@@ -74,6 +79,16 @@ export default function BookingsPage() {
     loadBookings();
     const interval = setInterval(loadBookings, 10_000);
     return () => clearInterval(interval);
+  }, [selectedZone]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (deleteMenuRef.current && !deleteMenuRef.current.contains(e.target as Node)) {
+        setDeleteMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   useEffect(() => {
@@ -159,6 +174,31 @@ export default function BookingsPage() {
   };
   const toggleSelect = (id: string) =>
     setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const handleHardDelete = async (id: string) => {
+    setDeleteMenuId(null);
+    if (!confirm('Supprimer définitivement cette réservation pour TOUS les utilisateurs ? Action irréversible.')) return;
+    setActioningId(id);
+    try {
+      await apiClient.delete(`/admin/bookings/${id}/force`);
+      setAllBookings(prev => prev.filter(b => b.id !== id));
+      setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+    } catch { alert('Erreur lors de la suppression'); }
+    finally { setActioningId(null); }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    if (!confirm(`Supprimer définitivement ${ids.length} réservation${ids.length > 1 ? 's' : ''} pour TOUS les utilisateurs ? Action irréversible.`)) return;
+    setBulkActioning(true);
+    try {
+      await Promise.all(ids.map(id => apiClient.delete(`/admin/bookings/${id}/force`)));
+      setAllBookings(prev => prev.filter(b => !ids.includes(b.id)));
+      setSelectedIds(new Set());
+    } catch { alert('Erreur lors de la suppression groupée'); }
+    finally { setBulkActioning(false); }
+  };
 
   const handleBulkCancel = async () => {
     const ids = [...selectedIds];
@@ -248,7 +288,8 @@ export default function BookingsPage() {
           onClear={() => setSelectedIds(new Set())}
           loading={bulkActioning}
           actions={[
-            { label: '✕ Annuler la sélection', variant: 'danger', onClick: handleBulkCancel },
+            { label: '✕ Annuler la sélection', variant: 'danger',   onClick: handleBulkCancel },
+            { label: '🗑 Supprimer la sélection', variant: 'danger', onClick: handleBulkDelete },
           ]}
         />
       )}
@@ -368,11 +409,11 @@ export default function BookingsPage() {
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {booking.finalPrice != null
-                            ? `${booking.finalPrice} EGP`
+                            ? `${booking.finalPrice} ${(booking as any).currency ?? ''}`
                             : booking.cashAmountDeclaredByPro != null
-                              ? `${booking.cashAmountDeclaredByPro} EGP`
+                              ? `${booking.cashAmountDeclaredByPro} ${(booking as any).currency ?? ''}`
                               : booking.estimatedPrice != null
-                                ? `~${booking.estimatedPrice} EGP`
+                                ? `~${booking.estimatedPrice} ${(booking as any).currency ?? ''}`
                                 : '—'}
                         </div>
                         <div className="text-xs text-gray-500 flex items-center gap-1">
@@ -391,12 +432,33 @@ export default function BookingsPage() {
                       </td>
 
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/bookings/${booking.id}`}
-                          className="text-primary hover:underline font-medium text-xs"
-                        >
-                          Voir →
-                        </Link>
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href={`/bookings/${booking.id}`}
+                            className="text-primary hover:underline font-medium text-xs"
+                          >
+                            Voir →
+                          </Link>
+                          <div className="relative" ref={deleteMenuId === booking.id ? deleteMenuRef : undefined}>
+                            <button
+                              onClick={() => setDeleteMenuId(deleteMenuId === booking.id ? null : booking.id)}
+                              disabled={actioningId === booking.id}
+                              className="text-red-500 hover:text-red-700 disabled:opacity-50 text-xs"
+                            >
+                              {actioningId === booking.id ? '…' : 'Supprimer ▾'}
+                            </button>
+                            {deleteMenuId === booking.id && (
+                              <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-10 text-sm">
+                                <button
+                                  onClick={() => handleHardDelete(booking.id)}
+                                  className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600"
+                                >
+                                  🗑 Supprimer pour tous
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   );

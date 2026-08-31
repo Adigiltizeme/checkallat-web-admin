@@ -68,6 +68,20 @@ export default function ServiceProposalDetailPage() {
     } catch { /* silent */ } finally { setSending(false); }
   };
 
+  const openAcceptModal = () => {
+    // Pré-remplir le slug depuis serviceNameEn (snake_case sans caractères spéciaux)
+    if (proposal?.serviceNameEn && !categorySlug) {
+      const generated = proposal.serviceNameEn
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+      setCategorySlug(generated);
+    }
+    setShowAcceptModal(true);
+  };
+
   const review = async (action: 'accept' | 'refuse' | 'under_review', extra?: Record<string, string>) => {
     setReviewing(true);
     try {
@@ -233,7 +247,7 @@ export default function ServiceProposalDetailPage() {
               )}
 
               <button
-                onClick={() => setShowAcceptModal(true)}
+                onClick={openAcceptModal}
                 className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 ✅ Accepter
@@ -276,16 +290,31 @@ export default function ServiceProposalDetailPage() {
       {/* Accept modal */}
       {showAcceptModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md space-y-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg space-y-4">
             <h3 className="font-bold text-lg text-green-700">Accepter la proposition</h3>
+
+            {/* Panneau d'info — effets automatiques */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800 space-y-1">
+              <p className="font-semibold">Si un slug est renseigné, ces actions se déclenchent automatiquement :</p>
+              <ul className="list-disc list-inside space-y-0.5 text-green-700">
+                <li>La catégorie de service est créée en base (FR / EN / AR depuis la proposition)</li>
+                <li>Le proposant est créé ou mis à jour comme prestataire (<em>statut : en attente</em>)</li>
+                <li>Une notification push est envoyée sur son mobile</li>
+                <li>Un email de décision lui est envoyé</li>
+              </ul>
+            </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Slug de catégorie créée (optionnel)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Slug de catégorie <span className="text-green-600 font-semibold">(recommandé)</span>
+              </label>
               <input
                 value={categorySlug}
-                onChange={e => setCategorySlug(e.target.value)}
+                onChange={e => setCategorySlug(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                 placeholder="ex: carpentry"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 font-mono"
               />
+              <p className="text-xs text-gray-400 mt-1">Pré-rempli depuis le nom EN · uniquement minuscules et underscores</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Note pour l'utilisateur (optionnel)</label>

@@ -4,6 +4,7 @@ import { StatsCards } from '@/components/dashboard/StatsCards';
 import { RevenueChart } from '@/components/dashboard/RevenueChart';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { TransactionsTable } from '@/components/dashboard/TransactionsTable';
+import { ZoneBanner } from '@/components/dashboard/ZoneBanner';
 
 function StatsCardsSkeleton() {
   return (
@@ -36,6 +37,8 @@ export default function DashboardPage() {
           Vue d'ensemble de la plateforme CheckAll@t
         </p>
       </div>
+
+      <ZoneBanner />
 
       <Suspense fallback={<StatsCardsSkeleton />}>
         <StatsCards />

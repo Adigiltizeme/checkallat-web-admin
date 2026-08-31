@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
 import { SingleFileUpload, MultiFileUpload } from '@/components/FileUpload';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface DriverFormProps {
   driver?: any;
@@ -17,6 +18,7 @@ const VEHICLE_TYPES = [
 ];
 
 export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
+  const { zones } = useZone();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     // User info
@@ -45,6 +47,7 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
     portfolioPhotos: [] as string[],
     activityDescription: '',
     status: 'pending',
+    countryId: '',
   });
 
   useEffect(() => {
@@ -74,6 +77,7 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
         portfolioPhotos: driver.portfolioPhotos || [],
         activityDescription: driver.activityDescription || '',
         status: driver.status || 'pending',
+        countryId: driver.countryId || '',
       });
     }
   }, [driver]);
@@ -105,6 +109,7 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
           portfolioPhotos: formData.portfolioPhotos,
           activityDescription: formData.activityDescription || null,
           status: formData.status,
+          countryId: formData.countryId || null,
         });
       } else {
         // Mode création
@@ -112,7 +117,7 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
           alert('Le mot de passe est requis');
           return;
         }
-        await apiClient.post('/admin/drivers', formData);
+        await apiClient.post('/admin/drivers', { ...formData, countryId: formData.countryId || undefined });
       }
       onSuccess();
     } catch (error: any) {
@@ -409,6 +414,26 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
           />
         </div>
+      </div>
+
+      {/* Pays */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          Pays / Zone <span className="text-red-500">*</span>
+        </label>
+        <select
+          value={formData.countryId}
+          onChange={(e) => setFormData({ ...formData, countryId: e.target.value })}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+          required
+        >
+          <option value="">— Sélectionner un pays —</option>
+          {zones.map((z) => (
+            <option key={z.id} value={z.id}>
+              {z.flag ? `${z.flag} ` : ''}{z.nameFr || z.name} ({z.currency})
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Status */}

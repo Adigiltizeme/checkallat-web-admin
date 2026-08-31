@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
+import { useZone } from '@/contexts/ZoneContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -35,6 +36,7 @@ export default function SupportPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sectorTab, setSectorTab] = useState('all');
+  const { selectedZone } = useZone();
 
   const load = () => {
     const sectorType = SECTOR_TABS.find(t => t.key === sectorTab)?.type;
@@ -53,7 +55,7 @@ export default function SupportPage() {
     load();
     const interval = setInterval(load, 30000);
     return () => clearInterval(interval);
-  }, [statusFilter, sectorTab]);
+  }, [statusFilter, sectorTab, selectedZone]);
 
   const filtered = categoryFilter === 'all'
     ? disputes

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface PayoutAccount {
   id: string;
@@ -117,6 +118,7 @@ export default function PayoutsPage() {
   const [statusFilter, setStatusFilter] = useState('pending');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [processing, setProcessing] = useState(false);
+  const { selectedZone } = useZone();
   const [verifying, setVerifying] = useState<string | null>(null);
   const [modal, setModal] = useState<{ payout: Payout } | null>(null);
   const [modalNotes, setModalNotes] = useState('');
@@ -135,7 +137,7 @@ export default function PayoutsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [statusFilter]);
+  }, [statusFilter, selectedZone]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -223,7 +225,7 @@ export default function PayoutsPage() {
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-500">Montant en attente</p>
-          <p className="text-2xl font-bold text-yellow-600">{pendingTotal.toFixed(2)} EGP</p>
+          <p className="text-2xl font-bold text-yellow-600">{pendingTotal.toFixed(2)}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-500">Sélectionnés</p>
@@ -325,7 +327,7 @@ export default function PayoutsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {format(new Date(payout.createdAt), 'dd/MM/yy HH:mm', { locale: fr })}
+                      {payout.createdAt ? format(new Date(payout.createdAt), 'dd/MM/yy HH:mm', { locale: fr }) : '—'}
                     </td>
                     <td className="px-6 py-4">
                       {payout.status === 'pending' && (
@@ -363,7 +365,7 @@ export default function PayoutsPage() {
               <div>
                 <h2 className="text-lg font-bold text-gray-900">Confirmer le versement</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Bénéficiaire : <strong>{beneficiaryName(modal.payout)}</strong> — Montant net : <strong className="text-green-700">{modal.payout.netAmount.toFixed(2)} EGP</strong>
+                  Bénéficiaire : <strong>{beneficiaryName(modal.payout)}</strong> — Montant net : <strong className="text-green-700">{modal.payout.netAmount.toFixed(2)}</strong>
                 </p>
               </div>
 

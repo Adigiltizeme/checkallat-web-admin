@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface Activity {
   id: string;
@@ -14,13 +15,16 @@ interface Activity {
 export function RecentActivity() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const { selectedZone } = useZone();
 
   useEffect(() => {
-    apiClient.get<Activity[]>('/admin/recent-activity')
+    setLoading(true);
+    const params = selectedZone ? { zone: selectedZone } : {};
+    apiClient.get<Activity[]>('/admin/recent-activity', { params })
       .then((data) => setActivities(data.slice(0, 10)))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedZone]);
 
   if (loading) {
     return <div className="text-center py-4">Chargement...</div>;

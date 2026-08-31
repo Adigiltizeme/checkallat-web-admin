@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
+import { useZone } from '@/contexts/ZoneContext';
 
 const ROLES = ['admin', 'super_admin', 'support'] as const;
 const ALL_PERMISSIONS = [
@@ -33,6 +34,7 @@ export default function AdminsPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
+  const { selectedZone } = useZone();
 
   const load = () => {
     setLoading(true);
@@ -42,7 +44,7 @@ export default function AdminsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [selectedZone]);
 
   const togglePermission = (p: string) => {
     setForm(f => ({

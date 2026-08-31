@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { useZone } from '@/contexts/ZoneContext';
 
 type Status = 'all' | 'pending' | 'under_review' | 'accepted' | 'refused';
 
@@ -20,6 +21,7 @@ export default function ServiceProposalsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Status>('all');
+  const { selectedZone } = useZone();
 
   const load = useCallback((status: Status) => {
     setLoading(true);
@@ -32,7 +34,7 @@ export default function ServiceProposalsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedZone]);
 
   useEffect(() => { load(activeTab); }, [load, activeTab]);
 

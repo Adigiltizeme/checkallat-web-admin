@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { useZone } from '@/contexts/ZoneContext';
 
 const SECTOR_TABS = [
   { key: 'all',       label: 'Tous',        type: undefined },
@@ -16,6 +17,7 @@ export default function DisputesPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [sectorTab, setSectorTab] = useState('all');
+  const { selectedZone } = useZone();
 
   useEffect(() => {
     setLoading(true);
@@ -27,7 +29,7 @@ export default function DisputesPage() {
       .then((data: any) => setDisputes(data.disputes || data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [filter, sectorTab]);
+  }, [filter, sectorTab, selectedZone]);
 
   if (loading) {
     return <div className="text-center py-12">Chargement...</div>;

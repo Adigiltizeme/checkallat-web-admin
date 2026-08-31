@@ -11,6 +11,7 @@ import { CategoryTabs, CategoryTabItem } from '@/components/shared/CategoryTabs'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { BulkActionBar } from '@/components/shared/BulkActionBar';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface ServiceCategory {
   id: string;
@@ -42,6 +43,7 @@ export default function ProsPage() {
   const [selectedPro, setSelectedPro]   = useState<any>(null);
   const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set());
   const [bulkActioning, setBulkActioning] = useState(false);
+  const { selectedZone } = useZone();
 
   const loadData = () => {
     Promise.all([
@@ -60,7 +62,7 @@ export default function ProsPage() {
     loadData();
     const interval = setInterval(() => loadData(), 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedZone]);
 
   useEffect(() => {
     const id = setTimeout(() => setSearch(searchInput), 300);

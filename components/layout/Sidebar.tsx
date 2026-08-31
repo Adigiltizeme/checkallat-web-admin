@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { useZone } from '@/contexts/ZoneContext';
 import { apiClient } from '@/lib/api';
 import {
   LayoutDashboard,
@@ -161,6 +162,7 @@ function SidebarContent({
 }) {
   const pathname = usePathname();
   const { toggle, closeMobile } = useSidebar();
+  const { zones, selectedZone, selectedZoneObj, setSelectedZone } = useZone();
   const [hoveredHref, setHoveredHref] = useState<string | null>(null);
 
   const getBadge = (item: NavItem): number => {
@@ -204,6 +206,43 @@ function SidebarContent({
               <ChevronLeft className="h-4 w-4" />
             </button>
           </>
+        )}
+      </div>
+
+      {/* Zone selector */}
+      <div className={cn('border-b border-gray-800 flex-shrink-0', collapsed ? 'p-2' : 'px-3 py-2.5')}>
+        {!collapsed ? (
+          <>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Zone</p>
+            <select
+              value={selectedZone}
+              onChange={e => setSelectedZone(e.target.value)}
+              className="w-full bg-gray-800 text-white text-xs rounded px-2 py-1.5 border border-gray-700 focus:outline-none focus:border-primary cursor-pointer"
+            >
+              <option value="">🌐 Toutes les zones</option>
+              {zones.map(z => (
+                <option key={z.id} value={z.id}>
+                  {z.flag ?? ''} {z.nameFr ?? z.name ?? z.id} ({z.currency})
+                </option>
+              ))}
+            </select>
+            {selectedZoneObj && (
+              <p className="text-[10px] text-primary mt-1 text-center font-medium">
+                {selectedZoneObj.nameFr ?? selectedZoneObj.id} — {selectedZoneObj.currency}
+              </p>
+            )}
+          </>
+        ) : (
+          <button
+            className="w-full flex justify-center items-center text-xl py-0.5"
+            title={selectedZoneObj ? `Zone : ${selectedZoneObj.nameFr ?? selectedZoneObj.id} (${selectedZoneObj.currency})` : 'Toutes les zones'}
+            onClick={() => {
+              if (!selectedZone && zones.length > 0) setSelectedZone(zones[0].id);
+              else setSelectedZone('');
+            }}
+          >
+            {selectedZoneObj?.flag ?? '🌐'}
+          </button>
         )}
       </div>
 
@@ -279,7 +318,7 @@ function SidebarContent({
       </nav>
 
       {!collapsed && (
-        <div className="p-4 border-t border-gray-800 flex-shrink-0">
+        <div className="px-4 py-2 border-t border-gray-800 flex-shrink-0">
           <p className="text-xs text-gray-500 text-center">© 2026 CheckAll@t</p>
         </div>
       )}

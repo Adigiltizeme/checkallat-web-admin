@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { useZone } from '@/contexts/ZoneContext';
 
 const SECTOR_TABS = [
   { key: 'all',       label: 'Tous',        entityType: undefined },
@@ -81,6 +82,7 @@ export default function ConversationsPage() {
   const [loadingCalls, setLoadingCalls] = useState(true);
 
   const entityType = SECTOR_TABS.find(t => t.key === sectorTab)?.entityType;
+  const { selectedZone } = useZone();
 
   const fetchConversations = useCallback(() => {
     setLoadingConvs(true);
@@ -93,7 +95,7 @@ export default function ConversationsPage() {
       })
       .catch(console.error)
       .finally(() => setLoadingConvs(false));
-  }, [convPage, entityType]);
+  }, [convPage, entityType, selectedZone]);
 
   const fetchCallLogs = useCallback(() => {
     setLoadingCalls(true);
@@ -106,7 +108,7 @@ export default function ConversationsPage() {
       })
       .catch(console.error)
       .finally(() => setLoadingCalls(false));
-  }, [callPage, entityType]);
+  }, [callPage, entityType, selectedZone]);
 
   useEffect(() => { fetchConversations(); }, [fetchConversations]);
   useEffect(() => { fetchCallLogs(); }, [fetchCallLogs]);

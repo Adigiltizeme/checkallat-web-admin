@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { apiClient } from '@/lib/api';
 import { Users, ShoppingCart, TrendingUp, DollarSign } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface Stats {
   totalUsers: number;
   totalTransactions: number;
   totalRevenue: number;
+  revenueBaseCurrency?: string;
   averageRating: number;
   usersVariation: string;
   transactionsThisMonth: number;
@@ -21,15 +23,31 @@ export function StatsCards() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const { currency, formatCurrency } = useCurrency();
+  const { selectedZone, selectedZoneObj } = useZone();
 
   useEffect(() => {
-    apiClient.get<Stats>('/admin/stats')
+    setLoading(true);
+    const params = selectedZone ? { zone: selectedZone } : {};
+    apiClient.get<Stats>('/admin/stats', { params })
       .then(setStats)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedZone]);
 
   if (loading || !stats) return null;
+
+  // revenueBaseCurrency est défini par le backend quand les montants sont convertis (mode multi-zones)
+  const revenueLabel = selectedZoneObj
+    ? `Revenus ${selectedZoneObj.flag ?? ''} (${currency})`
+    : stats.revenueBaseCurrency
+      ? `Revenus (≈ ${stats.revenueBaseCurrency})`
+      : `Revenus (${currency || '—'})`;
+  const revenueValue = stats.revenueBaseCurrency
+    ? formatCurrency(stats.totalRevenue, stats.revenueBaseCurrency)
+    : formatCurrency(stats.totalRevenue);
+  const revenueDesc = stats.revenueBaseCurrency
+    ? `Converti en ${stats.revenueBaseCurrency} — sélectionnez une zone pour un total exact`
+    : stats.revenueVariation;
 
   const cards = [
     {
@@ -45,10 +63,10 @@ export function StatsCards() {
       description: `${stats.transactionsThisMonth} ce mois (${stats.transactionsVariation})`,
     },
     {
-      title: `Revenus (${currency})`,
-      value: formatCurrency(stats.totalRevenue),
+      title: revenueLabel,
+      value: revenueValue,
       icon: DollarSign,
-      description: stats.revenueVariation,
+      description: revenueDesc,
     },
     {
       title: 'Note moyenne',

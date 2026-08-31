@@ -215,7 +215,7 @@ export default function ClientDetailPage() {
                           <Td>{b.category?.nameFr || '—'}</Td>
                           <Td>{b.pro?.user ? `${b.pro.user.firstName} ${b.pro.user.lastName}` : '—'}</Td>
                           <Td><StatusPill status={b.status} map={BOOKING_STATUS} /></Td>
-                          <Td>{b.finalPrice ?? b.estimatedPrice ?? '—'} {b.currency || 'EGP'}</Td>
+                          <Td>{b.finalPrice ?? b.estimatedPrice ?? '—'} {(b as any).currency ?? ''}</Td>
                           <Td>{new Date(b.createdAt).toLocaleDateString('fr-FR')}</Td>
                           <Td><Link href={`/bookings/${b.id}`} className="text-blue-600 hover:underline text-xs">Voir →</Link></Td>
                         </tr>
@@ -294,7 +294,7 @@ export default function ClientDetailPage() {
                   <div className="flex flex-wrap gap-2">
                     {client.pro.serviceOfferings.map((o: any) => (
                       <span key={o.id} className="px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs border border-emerald-200">
-                        {o.category?.nameFr || o.categoryId} — {o.priceMin}{o.priceMax ? `–${o.priceMax}` : '+'} EGP
+                        {o.category?.nameFr || o.categoryId} — {o.priceMin}{o.priceMax ? `–${o.priceMax}` : '+'}
                       </span>
                     ))}
                   </div>
@@ -318,7 +318,7 @@ export default function ClientDetailPage() {
                           <Td>{b.category?.nameFr || '—'}</Td>
                           <Td>{b.client ? `${b.client.firstName} ${b.client.lastName}` : '—'}</Td>
                           <Td><StatusPill status={b.status} map={BOOKING_STATUS} /></Td>
-                          <Td>{b.finalPrice ?? b.estimatedPrice ?? '—'} EGP</Td>
+                          <Td>{b.finalPrice ?? b.estimatedPrice ?? '—'} {(b as any).currency ?? ''}</Td>
                           <Td>{new Date(b.createdAt).toLocaleDateString('fr-FR')}</Td>
                           <Td><Link href={`/bookings/${b.id}`} className="text-blue-600 hover:underline text-xs">Voir →</Link></Td>
                         </tr>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
+import { useZone } from '@/contexts/ZoneContext';
 
 function ClientForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
   const [loading, setLoading] = useState(false);
@@ -109,6 +110,7 @@ export default function ClientsPage() {
   const [filters, setFilters] = useState({ status: 'all', cashRestricted: 'all', search: '' });
   const [searchInput, setSearchInput] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const { selectedZone } = useZone();
 
   const loadClients = (isInitialLoad = false) => {
     if (isInitialLoad) setLoading(true);
@@ -136,7 +138,7 @@ export default function ClientsPage() {
     loadClients(loading);
     const iv = setInterval(() => loadClients(false), 10000);
     return () => clearInterval(iv);
-  }, [filters.status, filters.cashRestricted, filters.search, segment]);
+  }, [filters.status, filters.cashRestricted, filters.search, segment, selectedZone]);
 
   const handleSuspend = async (userId: string) => {
     if (!confirm('Suspendre ce compte ?')) return;

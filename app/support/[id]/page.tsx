@@ -126,7 +126,7 @@ export default function SupportDetailPage() {
                 Statut transport : <span className="font-medium">{tr.status}</span>
               </p>
               {tr.totalPrice && (
-                <p className="text-sm text-gray-500">Montant : {formatCurrency(tr.totalPrice)}</p>
+                <p className="text-sm text-gray-500">Montant : {formatCurrency(tr.totalPrice, tr.currency)}</p>
               )}
               {driver && (
                 <p className="text-sm text-gray-500 mt-1">

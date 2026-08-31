@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface ProFormProps {
   pro?: any; // Si fourni, mode édition. Sinon, mode création
@@ -20,6 +21,7 @@ const CATEGORIES = [
 ];
 
 export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
+  const { zones } = useZone();
   const [formData, setFormData] = useState({
     email: '',
     firstName: '',
@@ -32,6 +34,7 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
     isStudent: false,
     segment: 'standard',
     status: 'pending',
+    countryId: '',
     serviceAreaRadius: 10,
     serviceAreaCenterLat: 0,
     serviceAreaCenterLng: 0,
@@ -53,6 +56,7 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
         isStudent: pro.isStudyltizemeGraduate || false,
         segment: pro.segment || 'standard',
         status: pro.status || 'pending',
+        countryId: pro.countryId || '',
         serviceAreaRadius: pro.serviceAreaRadius ?? 10,
         serviceAreaCenterLat: pro.serviceAreaCenterLat ?? 0,
         serviceAreaCenterLng: pro.serviceAreaCenterLng ?? 0,
@@ -75,6 +79,7 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
           isStudyltizemeGraduate: formData.isStudent,
           segment: formData.segment,
           status: formData.status,
+          countryId: formData.countryId || null,
           serviceAreaRadius: formData.serviceAreaRadius,
           serviceAreaCenterLat: formData.serviceAreaCenterLat || null,
           serviceAreaCenterLng: formData.serviceAreaCenterLng || null,
@@ -88,7 +93,7 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
           return;
         }
         const { portfolioPhotos: _photos, ...createPayload } = formData;
-        await apiClient.post('/admin/pros', createPayload);
+        await apiClient.post('/admin/pros', { ...createPayload, countryId: formData.countryId || undefined });
         alert('Professionnel créé avec succès');
       }
       onSuccess();
@@ -233,6 +238,26 @@ export function ProForm({ pro, onSuccess, onCancel }: ProFormProps) {
             </label>
           ))}
         </div>
+      </div>
+
+      {/* Pays */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Pays / Zone <span className="text-red-500">*</span>
+        </label>
+        <select
+          value={formData.countryId}
+          onChange={(e) => setFormData({ ...formData, countryId: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          required
+        >
+          <option value="">— Sélectionner un pays —</option>
+          {zones.map((z) => (
+            <option key={z.id} value={z.id}>
+              {z.flag ? `${z.flag} ` : ''}{z.nameFr || z.name} ({z.currency})
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

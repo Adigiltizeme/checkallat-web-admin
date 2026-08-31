@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface Review {
   id: string;
@@ -61,6 +62,7 @@ const SECTOR_TABS: { key: SectorTab; label: string; type?: string }[] = [
 const BAD_REVIEWS_AVAILABLE = ['all', 'transport', 'services'] as const;
 
 export default function ReviewsManagementPage() {
+  const { selectedZone } = useZone();
   const [activeTab, setActiveTab] = useState<Tab>('reviews');
   const [sectorTab, setSectorTab] = useState<SectorTab>('all');
 
@@ -85,7 +87,7 @@ export default function ReviewsManagementPage() {
   const badList = isProSector ? badPros : badDrivers;
   const badApiPrefix = isProSector ? 'pro' : 'driver';
 
-  useEffect(() => { loadReviews(); }, [filterRating, sectorTab]);
+  useEffect(() => { loadReviews(); }, [filterRating, sectorTab, selectedZone]);
 
   useEffect(() => {
     if (activeTab === 'bad-reviews') {

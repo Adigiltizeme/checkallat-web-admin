@@ -511,12 +511,12 @@ export default function BookingDetailPage() {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Prix estimé</span>
-            <span className="font-medium text-gray-900">{booking.estimatedPrice ? `${booking.estimatedPrice} EGP` : '—'}</span>
+            <span className="font-medium text-gray-900">{booking.estimatedPrice ? `${booking.estimatedPrice} ${(booking as any).currency ?? ''}` : '—'}</span>
           </div>
           {booking.finalPrice != null && (
             <div className="flex justify-between">
               <span className="text-gray-600">Prix final</span>
-              <span className="font-bold text-green-700">{booking.finalPrice} EGP</span>
+              <span className="font-bold text-green-700">{booking.finalPrice} {(booking as any).currency ?? ''}</span>
             </div>
           )}
           {/* Escrow details */}
@@ -524,11 +524,11 @@ export default function BookingDetailPage() {
             <div className="mt-3 pt-3 border-t space-y-1.5">
               <div className="flex justify-between">
                 <span className="text-gray-500">Commission</span>
-                <span className="text-gray-700">{booking.payment.commissionAmount} EGP ({booking.payment.commissionRate}%)</span>
+                <span className="text-gray-700">{booking.payment.commissionAmount} {(booking as any).currency ?? ''} ({booking.payment.commissionRate}%)</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Net pro</span>
-                <span className="font-semibold text-green-700">{booking.payment.proNetAmount} EGP</span>
+                <span className="font-semibold text-green-700">{booking.payment.proNetAmount} {(booking as any).currency ?? ''}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Escrow</span>
@@ -682,7 +682,7 @@ export default function BookingDetailPage() {
                   <p className="text-xs text-blue-600 font-medium mb-1">💳 Déclaré par le client</p>
                   <p className="text-lg font-bold text-blue-800">
                     {booking.cashAmountDeclaredByClient != null
-                      ? `${booking.cashAmountDeclaredByClient} EGP`
+                      ? `${booking.cashAmountDeclaredByClient} ${(booking as any).currency ?? ''}`
                       : <span className="text-gray-400 text-sm font-normal">—</span>}
                   </p>
                 </div>
@@ -690,7 +690,7 @@ export default function BookingDetailPage() {
                   <p className="text-xs text-orange-600 font-medium mb-1">🔧 Déclaré par le pro</p>
                   <p className="text-lg font-bold text-orange-800">
                     {booking.cashAmountDeclaredByPro != null
-                      ? `${booking.cashAmountDeclaredByPro} EGP`
+                      ? `${booking.cashAmountDeclaredByPro} ${(booking as any).currency ?? ''}`
                       : <span className="text-gray-400 text-sm font-normal">—</span>}
                   </p>
                 </div>
@@ -703,7 +703,7 @@ export default function BookingDetailPage() {
                   <div>
                     <p className="text-sm font-semibold text-red-800">Divergence détectée</p>
                     <p className="text-xs text-red-600">
-                      Écart de {Math.abs(booking.cashAmountDeclaredByClient - booking.cashAmountDeclaredByPro).toFixed(2)} EGP
+                      Écart de {Math.abs(booking.cashAmountDeclaredByClient - booking.cashAmountDeclaredByPro).toFixed(2)} {(booking as any).currency ?? ''}
                       entre les déclarations. Un litige a été ouvert automatiquement.
                     </p>
                   </div>
@@ -713,11 +713,11 @@ export default function BookingDetailPage() {
                 <div className="grid grid-cols-3 gap-2 text-xs mt-1">
                   <div className="bg-gray-50 rounded p-2">
                     <p className="text-gray-500">Commission ({booking.cashCommissionRate}%)</p>
-                    <p className="font-semibold text-gray-800">{booking.cashCommissionAmount} EGP</p>
+                    <p className="font-semibold text-gray-800">{booking.cashCommissionAmount} {(booking as any).currency ?? ''}</p>
                   </div>
                   <div className="bg-gray-50 rounded p-2">
                     <p className="text-gray-500">Net pro</p>
-                    <p className="font-semibold text-green-700">{booking.cashNetAmount} EGP</p>
+                    <p className="font-semibold text-green-700">{booking.cashNetAmount} {(booking as any).currency ?? ''}</p>
                   </div>
                 </div>
               )}
@@ -803,15 +803,15 @@ export default function BookingDetailPage() {
             </p>
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm space-y-1">
               {booking.cashAmountDeclaredByClient != null && (
-                <p>💳 Déclaré par le client : <strong>{booking.cashAmountDeclaredByClient} EGP</strong></p>
+                <p>💳 Déclaré par le client : <strong>{booking.cashAmountDeclaredByClient} {(booking as any).currency ?? ''}</strong></p>
               )}
               {booking.cashAmountDeclaredByPro != null && (
-                <p>🔧 Déclaré par le pro : <strong>{booking.cashAmountDeclaredByPro} EGP</strong></p>
+                <p>🔧 Déclaré par le pro : <strong>{booking.cashAmountDeclaredByPro} {(booking as any).currency ?? ''}</strong></p>
               )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Montant confirmé (EGP) <span className="text-red-500">*</span>
+                Montant confirmé <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"

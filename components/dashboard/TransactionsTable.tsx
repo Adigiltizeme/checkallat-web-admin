@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useZone } from '@/contexts/ZoneContext';
 
 interface Transaction {
   id: string;
   amount: number;
+  currency?: string;
   paymentMethod: string;
   type: string;
   status: string;
@@ -31,13 +33,15 @@ export function TransactionsTable() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const { formatCurrency } = useCurrency();
+  const { selectedZone } = useZone();
 
   useEffect(() => {
+    setLoading(true);
     apiClient.get<Transaction[]>('/admin/recent-transactions')
       .then(setTransactions)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedZone]);
 
   if (loading) {
     return <div className="text-center py-4">Chargement...</div>;
@@ -72,7 +76,9 @@ export function TransactionsTable() {
                   {TYPE_LABELS[tx.type] ?? tx.type}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {formatCurrency(tx.amount)}
+                  {tx.currency
+                    ? `${tx.amount.toLocaleString('fr-FR')} ${tx.currency}`
+                    : formatCurrency(tx.amount)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <span className={`px-2 py-1 rounded text-xs ${
