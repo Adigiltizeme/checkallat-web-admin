@@ -19,8 +19,10 @@ export default function SellersPage() {
 
   const loadSellers = (isInitialLoad = false) => {
     if (isInitialLoad) setLoading(true); else setFetching(true);
+    const params: Record<string, string> = { ...filters };
+    if (selectedZone) params.zone = selectedZone;
     apiClient
-      .get('/admin/sellers', { params: filters })
+      .get('/admin/sellers', { params })
       .then((data: any) => setSellers(data.sellers || data))
       .catch(console.error)
       .finally(() => { setLoading(false); setFetching(false); });

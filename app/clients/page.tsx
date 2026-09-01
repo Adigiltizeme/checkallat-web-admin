@@ -121,6 +121,7 @@ export default function ClientsPage() {
     if (filters.cashRestricted === 'yes') params.cashRestricted = 'true';
     if (filters.search) params.search = filters.search;
     if (segment !== 'all') params.segment = segment;
+    if (selectedZone) params.zone = selectedZone;
 
     apiClient
       .get('/admin/users', { params })

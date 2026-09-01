@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { KybFranceCard } from '@/components/KybFranceCard';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'En attente',
@@ -398,6 +399,15 @@ export default function DriverDetailPage() {
           <p className="mt-2 text-xs text-gray-400">Cliquez sur une photo pour l'agrandir</p>
         </div>
       )}
+
+      {/* KYB France */}
+      <KybFranceCard
+        legalStatus={driver.legalStatus}
+        siret={driver.siret}
+        apeNafCode={driver.apeNafCode}
+        rcProInsuranceUrl={driver.rcProInsuranceUrl}
+        onLightbox={setLightboxSrc}
+      />
 
       {/* Demander renouvellement KYC */}
       {driver.status === 'active' && (driver.idDocumentFront || driver.selfiePhoto) && (

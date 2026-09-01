@@ -156,6 +156,7 @@ export default function TransactionsPage() {
     const fetch = () => {
       const params: Record<string, string> = {};
       if (categoryFilter !== 'all') params.categorySlug = categoryFilter;
+      if (selectedZone) params.zone = selectedZone;
       apiClient.get<Transaction[]>('/admin/transactions', { params })
         .then((data: any) => setAllTransactions(Array.isArray(data) ? data : []))
         .catch(console.error)

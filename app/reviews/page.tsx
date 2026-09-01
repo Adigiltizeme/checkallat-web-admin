@@ -104,6 +104,7 @@ export default function ReviewsManagementPage() {
       const params: any = { page: 1, limit: 50 };
       if (sectorType) params.type = sectorType;
       if (filterRating !== 'all') params.minRating = parseInt(filterRating);
+      if (selectedZone) params.zone = selectedZone;
       const data = await apiClient.get('/reviews/admin/all', { params }) as { reviews: Review[] };
       setReviews(data.reviews || []);
     } catch (error) {

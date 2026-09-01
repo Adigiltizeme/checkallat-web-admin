@@ -81,7 +81,7 @@ export default function CashCommissionsPage() {
       .then(([drivers, pros]: any[]) => { setData(drivers); setProsData(pros); })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [selectedZone]);
+  }, []);
 
   useEffect(() => {
     load();

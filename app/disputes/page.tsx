@@ -25,6 +25,7 @@ export default function DisputesPage() {
     if (filter !== 'all') params.status = filter;
     const sectorType = SECTOR_TABS.find(t => t.key === sectorTab)?.type;
     if (sectorType) params.type = sectorType;
+    if (selectedZone) params.zone = selectedZone;
     apiClient.get('/admin/disputes', { params })
       .then((data: any) => setDisputes(data.disputes || data))
       .catch(console.error)

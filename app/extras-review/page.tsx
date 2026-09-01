@@ -296,7 +296,7 @@ export default function ExtrasReviewPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedZone]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 

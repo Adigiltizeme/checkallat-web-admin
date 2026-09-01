@@ -25,8 +25,9 @@ export default function ServiceProposalsPage() {
 
   const load = useCallback((status: Status) => {
     setLoading(true);
-    const params = status !== 'all' ? `?status=${status}` : '';
-    apiClient.get(`/admin/service-proposals${params}`)
+    const params: Record<string, string> = {};
+    if (status !== 'all') params.status = status;
+    apiClient.get('/admin/service-proposals', { params })
       .then((data: any) => {
         setProposals(Array.isArray(data?.proposals) ? data.proposals : []);
         setByStatus(data?.byStatus ?? {});
@@ -34,7 +35,7 @@ export default function ServiceProposalsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [selectedZone]);
+  }, []);
 
   useEffect(() => { load(activeTab); }, [load, activeTab]);
 

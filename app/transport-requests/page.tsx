@@ -96,8 +96,10 @@ export default function TransportRequestsPage() {
 
   const loadRequests = (hidden = showHidden) => {
     setLoading(true);
+    const params: Record<string, string | undefined> = { showHidden: hidden ? 'true' : undefined };
+    if (selectedZone) params.zone = selectedZone;
     apiClient
-      .get('/admin/transport-requests', { params: { showHidden: hidden ? 'true' : undefined } })
+      .get('/admin/transport-requests', { params })
       .then((data: any) => setAllRequests(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setLoading(false));

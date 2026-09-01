@@ -16,7 +16,9 @@ export default function ProductsPage() {
 
   const loadProducts = (isInitialLoad = false) => {
     if (isInitialLoad) setLoading(true); else setFetching(true);
-    apiClient.get('/admin/products', { params: filters })
+    const params: Record<string, string> = { ...filters };
+    if (selectedZone) params.zone = selectedZone;
+    apiClient.get('/admin/products', { params })
       .then((data: any) => setProducts(data.products || data))
       .catch(console.error)
       .finally(() => { setLoading(false); setFetching(false); });

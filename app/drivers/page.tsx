@@ -26,8 +26,10 @@ export default function DriversPage() {
     } else {
       setFetching(true);
     }
+    const params: Record<string, string> = { ...filters };
+    if (selectedZone) params.zone = selectedZone;
     apiClient
-      .get('/admin/drivers', { params: filters })
+      .get('/admin/drivers', { params })
       .then((data: any) => setDrivers(data.drivers || data))
       .catch(console.error)
       .finally(() => {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { KybFranceCard } from '@/components/KybFranceCard';
 
 const STATUS_LABELS: Record<string, string> = {
   pending:   'En attente',
@@ -377,6 +378,15 @@ export default function ProDetailPage() {
           <p className="mt-2 text-xs text-gray-400">Cliquez sur une photo pour l'agrandir</p>
         </div>
       )}
+
+      {/* KYB France */}
+      <KybFranceCard
+        legalStatus={pro.legalStatus}
+        siret={pro.siret}
+        apeNafCode={pro.apeNafCode}
+        rcProInsuranceUrl={pro.rcProInsuranceUrl}
+        onLightbox={setLightboxSrc}
+      />
 
       {/* Demander renouvellement KYC */}
       {pro.status === 'active' && (pro.idDocumentFront || pro.selfiePhoto) && (

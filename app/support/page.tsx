@@ -43,6 +43,7 @@ export default function SupportPage() {
     const params: any = {};
     if (sectorType) params.type = sectorType;
     if (statusFilter !== 'all') params.status = statusFilter;
+    if (selectedZone) params.zone = selectedZone;
     apiClient
       .get('/admin/disputes', { params })
       .then((data: any) => setDisputes(Array.isArray(data) ? data : (data.disputes || [])))

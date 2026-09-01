@@ -137,7 +137,7 @@ export default function PayoutsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [statusFilter, selectedZone]);
+  }, [statusFilter]);
 
   useEffect(() => { load(); }, [load]);
 
