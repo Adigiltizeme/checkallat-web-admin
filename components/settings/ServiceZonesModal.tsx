@@ -287,73 +287,82 @@ export function ServiceZonesModal({ isOpen, onClose, zones, onSave }: ServiceZon
         </div>
 
         {/* Liste des zones */}
-        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
           {localZones.length === 0 && (
             <p className="text-sm text-gray-400 italic py-4 text-center">Aucune zone configurée.</p>
           )}
           {localZones.map((zone) => (
-            <div
-              key={zone.id}
-              className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                editingId === zone.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'
-              } ${!zone.enabled ? 'opacity-60' : ''}`}
-            >
-              <span className="text-xl flex-shrink-0">{zone.flag}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  {zone.name} — {zone.country}
-                </p>
-                <p className="text-xs text-gray-400">
-                  {zone.countryCode} · {zone.currency} · Mapbox: {zone.mapboxLanguage}
-                </p>
-              </div>
-
-              {/* Toggle enabled */}
-              <button
-                onClick={() => toggleEnabled(zone.id)}
-                className={`flex-shrink-0 relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
-                  zone.enabled ? 'bg-green-500' : 'bg-gray-300'
-                }`}
-                title={zone.enabled ? 'Désactiver' : 'Activer'}
+            <div key={zone.id}>
+              <div
+                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                  editingId === zone.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'
+                } ${!zone.enabled ? 'opacity-60' : ''}`}
               >
-                <span
-                  className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                    zone.enabled ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-
-              <button
-                onClick={() => openEdit(zone)}
-                className="p-1 text-blue-500 hover:text-blue-700 flex-shrink-0"
-                title="Modifier"
-              >
-                ✏️
-              </button>
-
-              {deleteConfirm === zone.id ? (
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => deleteZone(zone.id)}
-                    className="px-2 py-0.5 text-xs bg-red-600 text-white rounded"
-                  >
-                    OK
-                  </button>
-                  <button
-                    onClick={() => setDeleteConfirm(null)}
-                    className="px-2 py-0.5 text-xs border border-gray-300 rounded"
-                  >
-                    ✕
-                  </button>
+                <span className="text-xl flex-shrink-0">{zone.flag}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {zone.name} — {zone.country}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {zone.countryCode} · {zone.currency} · Mapbox: {zone.mapboxLanguage}
+                  </p>
                 </div>
-              ) : (
+
+                {/* Toggle enabled */}
                 <button
-                  onClick={() => setDeleteConfirm(zone.id)}
-                  className="p-1 text-red-400 hover:text-red-600 flex-shrink-0"
+                  onClick={() => toggleEnabled(zone.id)}
+                  className={`flex-shrink-0 relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                    zone.enabled ? 'bg-green-500' : 'bg-gray-300'
+                  }`}
+                  title={zone.enabled ? 'Désactiver' : 'Activer'}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                      zone.enabled ? 'translate-x-5' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+
+                <button
+                  onClick={() => openEdit(zone)}
+                  className="p-1 text-blue-500 hover:text-blue-700 flex-shrink-0"
+                  title="Modifier"
+                >
+                  ✏️
+                </button>
+
+                <button
+                  onClick={() => setDeleteConfirm(deleteConfirm === zone.id ? null : zone.id)}
+                  className={`p-1 flex-shrink-0 ${deleteConfirm === zone.id ? 'text-red-600' : 'text-red-400 hover:text-red-600'}`}
                   title="Supprimer"
                 >
                   🗑️
                 </button>
+              </div>
+
+              {deleteConfirm === zone.id && (
+                <div className="mt-1 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 space-y-2">
+                  <p className="font-semibold">⚠️ Supprimer la zone {zone.flag} {zone.name} ({zone.countryCode}) ?</p>
+                  <ul className="list-disc list-inside text-red-700 space-y-0.5">
+                    <li>Grille tarifaire transport ({zone.countryCode}) supprimée définitivement</li>
+                    <li>Tarifs de prestations de services ({zone.countryCode}) supprimés définitivement</li>
+                    <li>Le pays sera désactivé (les comptes utilisateurs existants ne sont pas supprimés)</li>
+                  </ul>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => deleteZone(zone.id)}
+                      className="px-3 py-1 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700"
+                    >
+                      Confirmer la suppression
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(null)}
+                      className="px-3 py-1 border border-gray-300 text-gray-700 rounded text-xs hover:bg-gray-50"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           ))}

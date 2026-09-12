@@ -47,14 +47,16 @@ const isUnconfigured = (p: TransportPricing) =>
   p.baseFareVan === 0 && p.baseFareSmallTruck === 0 && p.basefareLargeTruck === 0;
 
 export function TransportPricingModal({ isOpen, onClose, pricings, zones = [], onSave }: TransportPricingModalProps) {
-  const [editedPricings, setEditedPricings] = useState<TransportPricing[]>(pricings);
+  const validPricings = pricings.filter((p) => p.countryId != null);
+  const [editedPricings, setEditedPricings] = useState<TransportPricing[]>(validPricings);
   const [saving, setSaving] = useState(false);
-  const [selectedZone, setSelectedZone] = useState<string>(pricings[0]?.countryId || '');
+  const [selectedZone, setSelectedZone] = useState<string>(validPricings[0]?.countryId || '');
 
   useEffect(() => {
-    setEditedPricings(pricings);
-    if (pricings.length > 0 && !selectedZone) {
-      setSelectedZone(pricings[0].countryId);
+    const valid = pricings.filter((p) => p.countryId != null);
+    setEditedPricings(valid);
+    if (valid.length > 0 && !selectedZone) {
+      setSelectedZone(valid[0].countryId);
     }
   }, [pricings, selectedZone]);
 
@@ -80,7 +82,8 @@ export function TransportPricingModal({ isOpen, onClose, pricings, zones = [], o
 
   const currentPricing = editedPricings.find((p) => p.countryId === selectedZone);
 
-  const getZoneLabel = (zoneId: string) => {
+  const getZoneLabel = (zoneId: string | null | undefined) => {
+    if (!zoneId) return '—';
     const zone = zones.find((z) => z.id === zoneId);
     if (zone) return `${zone.flag ?? '🌍'} ${zone.name}, ${zone.country}`;
     return zoneId.toUpperCase();

@@ -12,7 +12,7 @@ export default function TermsPage() {
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Conditions Générales d'Utilisation</h1>
-        <p className="text-sm text-gray-500 mb-8">Dernière mise à jour : août 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Dernière mise à jour : septembre 2026</p>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-8 text-gray-700 text-sm leading-relaxed">
 
@@ -136,7 +136,22 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">4 bis. Paiements en espèces et mécanisme anti-fraude</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">4 bis. Négociation de prix avant paiement (services)</h2>
+            <p className="mb-2">
+              Pour les réservations de services avec paiement intégré (carte bancaire), le flux de paiement se déroule en deux étapes distinctes :
+            </p>
+            <ol className="list-decimal pl-5 space-y-1 mb-2">
+              <li>Le client soumet sa demande de service avec un prix estimatif. La demande est enregistrée et transmise au prestataire.</li>
+              <li>Le prestataire peut accepter le prix estimatif ou proposer un ajustement (par exemple pour couvrir des matériaux supplémentaires). Le client est notifié et peut accepter ou refuser l'offre.</li>
+              <li>En cas d'acceptation, le client procède au paiement sécurisé via Stripe. Les fonds sont bloqués en séquestre jusqu'à la fin de la prestation.</li>
+            </ol>
+            <p className="mb-2">
+              <strong>En cas de refus du prix proposé par le client</strong> : si aucun paiement n'a été effectué, la demande de service est annulée et aucune transaction n'est prélevée.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">4 ter. Paiements en espèces et mécanisme anti-fraude</h2>
             <p className="mb-2">
               Lorsque le paiement en espèces est autorisé pour un service donné, le client et le prestataire sont chacun invités à déclarer indépendamment le montant échangé. Ce mécanisme de double déclaration permet à CheckAll@t de vérifier la cohérence des montants et de calculer les commissions dues.
             </p>

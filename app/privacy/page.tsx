@@ -12,7 +12,7 @@ export default function PrivacyPage() {
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Politique de confidentialité</h1>
-        <p className="text-sm text-gray-500 mb-8">Dernière mise à jour : août 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Dernière mise à jour : septembre 2026</p>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-8 text-gray-700 text-sm leading-relaxed">
 
@@ -59,6 +59,7 @@ export default function PrivacyPage() {
               <li><strong>Signature électronique du client</strong> : capturée à la fin d'une prestation de transport pour confirmer la bonne réception des biens. Stockée de façon sécurisée.</li>
               <li>Photos fournies par le client pour décrire sa demande (avant intervention).</li>
               <li><strong>Double déclaration de montant cash</strong> : montant déclaré indépendamment par le client et par le prestataire en cas de paiement en espèces, utilisé à des fins de vérification anti-fraude.</li>
+              <li><strong>Négociation de prix avant paiement (services)</strong> : pour les réservations de services avec paiement intégré, le prestataire peut proposer un ajustement de prix avant la confirmation du paiement. La demande est enregistrée en base de données dès sa soumission, mais aucune transaction financière n'est initiée avant acceptation explicite du prix et confirmation du paiement par le client.</li>
             </ul>
 
             <h3 className="font-semibold text-gray-800 mt-4 mb-2">2.4 Données de paiement entrant</h3>

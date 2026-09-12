@@ -252,7 +252,9 @@ export default function TransportRequestDetailPage() {
   }
 
   const statusConfig = STATUS_CONFIG[request.status] || STATUS_CONFIG.pending;
-  const transitions = VALID_TRANSITIONS[request.status] || [];
+  const naturalTransitions = VALID_TRANSITIONS[request.status] || [];
+  // L'admin peut forcer n'importe quel statut sauf le statut actuel
+  const allOtherStatuses = Object.keys(STATUS_CONFIG).filter(s => s !== request.status);
 
   const timeline = [
     { status: 'accepted', label: 'Accepté', time: request.driverAcceptedAt },
@@ -332,11 +334,9 @@ export default function TransportRequestDetailPage() {
               Assigner chauffeur
             </button>
           )}
-          {transitions.length > 0 && (
-            <button onClick={() => setShowStatusModal(true)} disabled={updating} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
-              Changer statut
-            </button>
-          )}
+          <button onClick={() => setShowStatusModal(true)} disabled={updating} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+            Changer statut
+          </button>
           {request.status !== 'cancelled' && request.status !== 'completed' && (
             <button onClick={() => setShowCancelModal(true)} disabled={updating} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50">
               Annuler (avec remboursement)
@@ -987,24 +987,52 @@ export default function TransportRequestDetailPage() {
       {/* Status Modal */}
       {showStatusModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold mb-4">Changer le statut</h3>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-1">Changer le statut</h3>
+            <p className="text-sm text-gray-500 mb-4">Statut actuel : <strong>{STATUS_CONFIG[request.status]?.label}</strong></p>
+
+            {naturalTransitions.length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Transition normale</p>
+                <div className="space-y-2 mb-4">
+                  {naturalTransitions.map(status => {
+                    const cfg = STATUS_CONFIG[status];
+                    return (
+                      <button
+                        key={status}
+                        onClick={() => handleStatusChange(status)}
+                        disabled={updating}
+                        className={`w-full p-3 rounded text-left ${cfg.color} hover:shadow disabled:opacity-50`}
+                      >
+                        <span className="mr-2">{cfg.icon}</span>
+                        <span className="font-semibold">{cfg.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">⚡ Forcer un statut (correction admin)</p>
+              </>
+            )}
+
             <div className="space-y-2 mb-6">
-              {transitions.map(status => {
-                const cfg = STATUS_CONFIG[status];
-                return (
-                  <button
-                    key={status}
-                    onClick={() => handleStatusChange(status)}
-                    disabled={updating}
-                    className={`w-full p-3 rounded text-left ${cfg.color} hover:shadow disabled:opacity-50`}
-                  >
-                    <span className="mr-2">{cfg.icon}</span>
-                    <span className="font-semibold">{cfg.label}</span>
-                  </button>
-                );
-              })}
+              {allOtherStatuses
+                .filter(s => !naturalTransitions.includes(s))
+                .map(status => {
+                  const cfg = STATUS_CONFIG[status];
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => handleStatusChange(status)}
+                      disabled={updating}
+                      className="w-full p-3 rounded text-left bg-gray-50 border border-gray-200 hover:bg-gray-100 disabled:opacity-50 text-gray-700"
+                    >
+                      <span className="mr-2">{cfg.icon}</span>
+                      <span className="font-semibold">{cfg.label}</span>
+                    </button>
+                  );
+                })}
             </div>
+
             <button onClick={() => setShowStatusModal(false)} className="w-full px-4 py-2 bg-gray-200 rounded">
               Annuler
             </button>

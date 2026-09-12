@@ -88,6 +88,7 @@ export default function ConversationsPage() {
     setLoadingConvs(true);
     const params: any = { page: convPage, limit: 50 };
     if (entityType) params.entityType = entityType;
+    if (selectedZone && selectedZone !== 'all') params.zone = selectedZone;
     apiClient.get('/admin/conversations', { params })
       .then((data: any) => {
         setConversations(data.conversations ?? []);
@@ -101,6 +102,7 @@ export default function ConversationsPage() {
     setLoadingCalls(true);
     const params: any = { page: callPage, limit: 100 };
     if (entityType) params.entityType = entityType;
+    if (selectedZone && selectedZone !== 'all') params.zone = selectedZone;
     apiClient.get('/admin/call-logs', { params })
       .then((data: any) => {
         setCallLogs(data.logs ?? []);

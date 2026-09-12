@@ -124,6 +124,8 @@ export default function SettingsPage() {
     await apiClient.put('/admin/settings', { serviceZones: zones });
     await refreshSettings();
     await loadSettings();
+    await loadTransportPricings();
+    await loadServicePricings();
     alert('Zones de la plateforme mises à jour !');
   };
 

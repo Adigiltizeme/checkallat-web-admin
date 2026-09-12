@@ -93,9 +93,8 @@ export default function BookingDetailPage() {
   const [showAssignModal,      setShowAssignModal]      = useState(false);
   const [proIdToAssign,        setProIdToAssign]        = useState('');
   const [assigning,            setAssigning]            = useState(false);
-  const [proSearchQuery,       setProSearchQuery]       = useState('');
-  const [proSearchResults,     setProSearchResults]     = useState<any[]>([]);
-  const [proSearchLoading,     setProSearchLoading]     = useState(false);
+  const [availablePros,        setAvailablePros]        = useState<any[]>([]);
+  const [prosLoading,          setProsLoading]          = useState(false);
 
   // Countdown pour les réservations immédiates en attente (30s fenêtre d'auto-assign)
   const BOOKING_ACCEPT_TIMEOUT_SEC = 30;
@@ -139,29 +138,31 @@ export default function BookingDetailPage() {
     return () => clearInterval(tick);
   }, [booking?.id, booking?.status, booking?.bookingType, booking?.assignmentType, booking?.createdAt]);
 
-  const searchPros = async (query: string) => {
-    setProSearchQuery(query);
-    if (!query.trim()) { setProSearchResults([]); return; }
-    setProSearchLoading(true);
+  const openAssignModal = async () => {
+    setShowAssignModal(true);
+    setProIdToAssign('');
+    setProsLoading(true);
     try {
       const categorySlug = booking?.category?.slug ?? '';
-      const qs = new URLSearchParams({ status: 'active', search: query });
-      if (categorySlug) qs.set('category', categorySlug);
-      const result: any = await apiClient.get(`/admin/pros?${qs.toString()}`);
-      setProSearchResults(Array.isArray(result) ? result : result?.pros ?? []);
-    } catch { setProSearchResults([]); }
-    finally { setProSearchLoading(false); }
+      const params: Record<string, string> = { status: 'active' };
+      if (categorySlug) params.category = categorySlug;
+      const result: any = await apiClient.get('/admin/pros', { params });
+      setAvailablePros(Array.isArray(result) ? result : result?.pros ?? []);
+    } catch { setAvailablePros([]); }
+    finally { setProsLoading(false); }
   };
 
   const handleAssignPro = async () => {
     if (!proIdToAssign.trim()) return;
-    const p = proSearchResults.find(x => x.id === proIdToAssign);
+    const p = availablePros.find(x => x.id === proIdToAssign);
     const name = p ? `${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim() : proIdToAssign;
-    if (!confirm(`Assigner "${name}" à cette réservation ?`)) return;
+    const isUnavailable = p && !p.isAvailable;
+    if (isUnavailable && !confirm(`⚠️ Ce prestataire est actuellement indisponible.\nAssigner quand même "${name}" ?`)) return;
+    if (!isUnavailable && !confirm(`Assigner "${name}" à cette réservation ?`)) return;
     setAssigning(true);
     try {
       await apiClient.put(`/admin/bookings/${bookingId}/assign-pro`, { proId: proIdToAssign.trim() });
-      setShowAssignModal(false); setProIdToAssign(''); setProSearchQuery(''); setProSearchResults([]);
+      setShowAssignModal(false); setProIdToAssign(''); setAvailablePros([]);
       loadBooking();
     } catch (err: any) { alert('Erreur: ' + (err.response?.data?.message || 'Erreur inconnue')); }
     finally { setAssigning(false); }
@@ -234,7 +235,8 @@ export default function BookingDetailPage() {
   const proUser     = booking.pro?.user;
   const proName     = proUser ? `${proUser.firstName} ${proUser.lastName}` : booking.pro?.companyName ?? '—';
   const serviceName = booking.category?.nameFr ?? booking.serviceOffering?.category?.nameFr ?? booking.category?.slug ?? '—';
-  const nextStatuses = VALID_TRANSITIONS[booking.status] ?? [];
+  const naturalNextStatuses = VALID_TRANSITIONS[booking.status] ?? [];
+  const allOtherStatuses = Object.keys(STATUS_CONFIG).filter(s => s !== booking.status);
   const canCancel   = !['completed', 'cancelled', 'rejected'].includes(booking.status);
 
   // Timeline steps
@@ -323,17 +325,15 @@ export default function BookingDetailPage() {
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Actions admin</h2>
         <div className="flex flex-wrap gap-3">
           {booking.status === 'pending' && (
-            <button onClick={() => setShowAssignModal(true)} disabled={updating}
+            <button onClick={openAssignModal} disabled={updating}
               className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium">
               👤 Assigner un pro
             </button>
           )}
-          {nextStatuses.filter(s => s !== 'cancelled').length > 0 && (
-            <button onClick={() => setShowStatusModal(true)} disabled={updating}
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 text-sm font-medium">
-              Modifier le statut
-            </button>
-          )}
+          <button onClick={() => setShowStatusModal(true)} disabled={updating}
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 text-sm font-medium">
+            Modifier le statut
+          </button>
           {canCancel && (
             <button onClick={() => setShowCancelModal(true)} disabled={updating}
               className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 text-sm font-medium">
@@ -381,10 +381,15 @@ export default function BookingDetailPage() {
                 const isCurrent = i === currentIndex;
                 return (
                   <div key={i} className="flex gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 ${
-                      isPast || isCurrent ? 'bg-primary text-white' : 'bg-gray-200'
-                    }`}>
-                      {step.icon}
+                    <div className="relative flex-shrink-0">
+                      {isCurrent && booking.status !== 'completed' && (
+                        <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-60" />
+                      )}
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
+                        isPast || isCurrent ? 'bg-primary text-white' : 'bg-gray-200'
+                      }`}>
+                        {step.icon}
+                      </div>
                     </div>
                     <div className="flex-1 pt-1">
                       <p className={`font-semibold ${isCurrent ? 'text-primary' : isPast ? 'text-gray-700' : 'text-gray-400'}`}>
@@ -396,10 +401,7 @@ export default function BookingDetailPage() {
                         </p>
                       )}
                       {isCurrent && booking.status !== 'completed' && (
-                        <span className="text-sm text-primary font-bold flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                          En cours
-                        </span>
+                        <span className="text-sm text-primary font-bold">● En cours</span>
                       )}
                     </div>
                   </div>
@@ -876,22 +878,48 @@ export default function BookingDetailPage() {
       {/* Modal changement de statut */}
       {showStatusModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Changer le statut</h3>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-gray-900 mb-1">Changer le statut</h3>
+            <p className="text-sm text-gray-500 mb-4">Statut actuel : <strong>{STATUS_CONFIG[booking.status]?.label}</strong></p>
+
+            {naturalNextStatuses.filter(s => s !== 'cancelled').length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Transition normale</p>
+                <div className="space-y-2 mb-4">
+                  {naturalNextStatuses.filter(s => s !== 'cancelled').map(s => {
+                    const cfg = STATUS_CONFIG[s];
+                    return (
+                      <button key={s} onClick={() => setSelectedStatus(s)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors text-sm font-medium ${
+                          selectedStatus === s ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
+                        }`}>
+                        <span>{cfg?.icon}</span>
+                        <span>{cfg?.label ?? s}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">⚡ Forcer un statut (correction admin)</p>
+              </>
+            )}
+
             <div className="space-y-2 mb-4">
-              {nextStatuses.filter(s => s !== 'cancelled').map(s => {
-                const cfg = STATUS_CONFIG[s];
-                return (
-                  <button key={s} onClick={() => setSelectedStatus(s)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors text-sm font-medium ${
-                      selectedStatus === s ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
-                    }`}>
-                    <span>{cfg?.icon}</span>
-                    <span>{cfg?.label ?? s}</span>
-                  </button>
-                );
-              })}
+              {allOtherStatuses
+                .filter(s => !naturalNextStatuses.includes(s) && s !== 'cancelled')
+                .map(s => {
+                  const cfg = STATUS_CONFIG[s];
+                  return (
+                    <button key={s} onClick={() => setSelectedStatus(s)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors text-sm font-medium ${
+                        selectedStatus === s ? 'border-primary bg-primary/5' : 'border-gray-100 bg-gray-50 hover:border-gray-300 text-gray-600'
+                      }`}>
+                      <span>{cfg?.icon}</span>
+                      <span>{cfg?.label ?? s}</span>
+                    </button>
+                  );
+                })}
             </div>
+
             <div className="flex gap-3 justify-end">
               <button onClick={() => { setShowStatusModal(false); setSelectedStatus(''); setCancellationReason(''); }}
                 className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 text-sm">
@@ -912,90 +940,76 @@ export default function BookingDetailPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh]">
             {/* Header */}
-            <div className="p-6 border-b border-gray-100">
+            <div className="p-5 border-b border-gray-100">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">👤 Assigner un professionnel</h3>
+                  <h3 className="text-lg font-bold text-gray-900">👤 Sélectionner un prestataire</h3>
                   <p className="text-sm text-gray-500 mt-0.5">
                     Catégorie : <span className="font-semibold text-emerald-700">{serviceName}</span>
                   </p>
                 </div>
-                <button onClick={() => { setShowAssignModal(false); setProIdToAssign(''); setProSearchQuery(''); setProSearchResults([]); }}
+                <button onClick={() => { setShowAssignModal(false); setProIdToAssign(''); setAvailablePros([]); }}
                   className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
-              </div>
-
-              {/* Search */}
-              <div className="relative mt-4">
-                <input type="text" placeholder="Rechercher par nom, email…" value={proSearchQuery}
-                  onChange={e => searchPros(e.target.value)} autoFocus
-                  className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent" />
-                <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
-                {proSearchLoading && (
-                  <span className="absolute right-3 top-2.5 inline-block w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                )}
               </div>
             </div>
 
-            {/* Results */}
+            {/* Liste des pros */}
             <div className="flex-1 overflow-y-auto p-3">
-              {proSearchResults.length > 0 ? (
-                <div className="space-y-1">
-                  {proSearchResults.map((p: any) => {
+              {prosLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <span className="inline-block w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : availablePros.length === 0 ? (
+                <div className="text-center py-10 text-gray-400">
+                  <p className="text-2xl mb-2">👥</p>
+                  <p className="text-sm">Aucun prestataire actif pour cette catégorie</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {availablePros.map((p: any) => {
                     const name = `${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim();
                     const isSelected = proIdToAssign === p.id;
                     const rating = p.averageRating ? Number(p.averageRating).toFixed(1) : null;
-                    const cats = (p.serviceCategories as string[] | null)?.join(', ') ?? '—';
                     return (
-                      <button key={p.id} onClick={() => setProIdToAssign(p.id)}
-                        className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all text-sm ${
-                          isSelected
-                            ? 'border-emerald-500 bg-emerald-50'
-                            : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+                      <label key={p.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'
                         }`}>
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm flex-shrink-0">
-                            {name.charAt(0).toUpperCase() || '?'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-semibold text-gray-900 truncate">{name || '—'}</p>
-                              {rating && (
-                                <span className="text-xs text-yellow-600 font-medium flex-shrink-0">⭐ {rating}</span>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-500 truncate">{cats}</p>
-                            {p.user?.email && <p className="text-xs text-gray-400 truncate">{p.user.email}</p>}
-                          </div>
-                          {isSelected && <span className="text-emerald-600 text-lg flex-shrink-0">✓</span>}
+                        <input type="radio" name="pro" value={p.id}
+                          checked={isSelected} onChange={() => setProIdToAssign(p.id)}
+                          className="accent-emerald-600" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
+                            {name || '—'}
+                            {rating && <span className="text-xs text-yellow-600">⭐ {rating}</span>}
+                            <span className="flex items-center gap-1">
+                              <span className={`w-2 h-2 rounded-full ${p.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} />
+                              <span className={`text-xs ${p.isAvailable ? 'text-green-600' : 'text-gray-400'}`}>
+                                {p.isAvailable ? 'Disponible' : 'Indisponible'}
+                              </span>
+                            </span>
+                          </p>
+                          <p className="text-sm text-gray-500 truncate">
+                            {p.user?.phone ?? p.user?.email ?? '—'}
+                          </p>
                         </div>
-                      </button>
+                      </label>
                     );
                   })}
                 </div>
-              ) : proSearchQuery && !proSearchLoading ? (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="text-2xl mb-2">🔍</p>
-                  <p className="text-sm">Aucun prestataire trouvé pour "{proSearchQuery}"</p>
-                  <p className="text-xs mt-1">Vérifiez le nom ou essayez sans filtre de catégorie</p>
-                </div>
-              ) : !proSearchQuery ? (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="text-2xl mb-2">👆</p>
-                  <p className="text-sm">Tapez un nom pour rechercher parmi les prestataires actifs</p>
-                </div>
-              ) : null}
+              )}
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-gray-100 flex gap-3">
-              <button onClick={() => { setShowAssignModal(false); setProIdToAssign(''); setProSearchQuery(''); setProSearchResults([]); }}
+            <div className="flex gap-3 p-4 border-t border-gray-100">
+              <button onClick={() => { setShowAssignModal(false); setProIdToAssign(''); setAvailablePros([]); }}
                 className="flex-1 px-4 py-2.5 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium">
                 Annuler
               </button>
-              <button onClick={handleAssignPro} disabled={!proIdToAssign.trim() || assigning}
+              <button onClick={handleAssignPro} disabled={!proIdToAssign || assigning}
                 className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-semibold flex items-center justify-center gap-2">
                 {assigning && <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                {proIdToAssign ? `Assigner ${proSearchResults.find(x => x.id === proIdToAssign)?.user?.firstName ?? ''}` : 'Choisir un pro'}
+                {proIdToAssign ? `Assigner ${availablePros.find(x => x.id === proIdToAssign)?.user?.firstName ?? ''}` : 'Choisir un prestataire'}
               </button>
             </div>
           </div>
