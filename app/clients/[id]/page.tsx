@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
+import { EditUserModal } from '@/components/shared/EditUserModal';
 
 /* ─── Labels & couleurs ─────────────────────────────────────────────────── */
 
@@ -47,6 +48,7 @@ export default function ClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<ActivityTab>('client');
+  const [editingUser, setEditingUser] = useState(false);
 
   const loadClient = async () => {
     try {
@@ -87,6 +89,14 @@ export default function ClientDetailPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
 
+      {editingUser && (
+        <EditUserModal
+          user={client}
+          onSuccess={() => { setEditingUser(false); loadClient(); }}
+          onCancel={() => setEditingUser(false)}
+        />
+      )}
+
       {/* En-tête */}
       <div className="flex items-start justify-between">
         <div>
@@ -94,13 +104,25 @@ export default function ClientDetailPage() {
           <h1 className="text-2xl font-bold text-gray-900">{client.firstName} {client.lastName}</h1>
           <p className="text-gray-500 text-sm">{client.phone}</p>
           <div className="flex gap-2 mt-2 flex-wrap">
-            {hasPro    && <RoleBadge icon="🔧" label="Pro" color="emerald" />}
-            {hasDriver && <RoleBadge icon="🚚" label="Chauffeur" color="blue" />}
+            {hasPro && (
+              <Link href={`/services/pros/${client.pro.id}`}>
+                <RoleBadge icon="🔧" label="→ Pro" color="emerald" />
+              </Link>
+            )}
+            {hasDriver && (
+              <Link href={`/transport/drivers/${client.driver.id}`}>
+                <RoleBadge icon="🚚" label="→ Chauffeur" color="blue" />
+              </Link>
+            )}
             {hasSeller && <RoleBadge icon="🛍️" label={client.marketplaceSeller?.businessName || 'Vendeur'} color="purple" />}
             {!hasPro && !hasDriver && !hasSeller && <RoleBadge icon="👤" label="Client uniquement" color="gray" />}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          <button onClick={() => setEditingUser(true)} disabled={processing}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm">
+            Modifier
+          </button>
           {isActive && (
             <button onClick={() => doAction(() => apiClient.patch(`/admin/users/${params.id}/suspend`) as any, 'Compte suspendu')}
               disabled={processing} className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 text-sm">

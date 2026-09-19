@@ -4,16 +4,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { useZone } from '@/contexts/ZoneContext';
+import { EditUserModal, UserFields, UserFormFields } from '@/components/shared/EditUserModal';
+
+/* ─── Modal création client ──────────────────────────────────────────────── */
 
 function ClientForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    firstName: '',
-    lastName: '',
-    phone: '',
-    password: '',
-    preferredLanguage: 'fr',
+  const [formData, setFormData] = useState<UserFields & { password: string }>({
+    email: '', firstName: '', lastName: '', phone: '', password: '', preferredLanguage: 'fr',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,41 +30,12 @@ function ClientForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
-          <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone <span className="text-red-500">*</span></label>
-          <input type="tel" required placeholder="+213555123456" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Prénom <span className="text-red-500">*</span></label>
-          <input type="text" required value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nom <span className="text-red-500">*</span></label>
-          <input type="text" required value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-        </div>
-      </div>
+      <UserFormFields data={formData} onChange={(d) => setFormData((p) => ({ ...p, ...d }))} />
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe <span className="text-red-500">*</span></label>
-        <input type="password" required value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+        <input type="password" required value={formData.password}
+          onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Langue préférée</label>
-        <select value={formData.preferredLanguage} onChange={(e) => setFormData({ ...formData, preferredLanguage: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-          <option value="fr">Français</option>
-          <option value="ar">Arabe</option>
-          <option value="en">Anglais</option>
-        </select>
       </div>
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
         <button type="button" onClick={onCancel} disabled={loading}
@@ -79,6 +48,7 @@ function ClientForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: 
     </form>
   );
 }
+
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Actif',
@@ -110,6 +80,7 @@ export default function ClientsPage() {
   const [filters, setFilters] = useState({ status: 'all', cashRestricted: 'all', search: '' });
   const [searchInput, setSearchInput] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
   const { selectedZone } = useZone();
 
   const loadClients = (isInitialLoad = false) => {
@@ -205,6 +176,14 @@ export default function ClientsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onSuccess={() => { setEditingUser(null); loadClients(false); }}
+          onCancel={() => setEditingUser(null)}
+        />
       )}
 
       {/* Stats */}
@@ -355,6 +334,13 @@ export default function ClientsPage() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center gap-3 flex-wrap">
                     <Link href={`/clients/${client.id}`} className="text-blue-600 hover:text-blue-900">Détails</Link>
+                    <button onClick={() => setEditingUser(client)} className="text-indigo-600 hover:text-indigo-900">Modifier</button>
+                    {client.driver && (
+                      <Link href={`/transport/drivers/${client.driver.id}`} className="text-blue-500 hover:text-blue-800">→ Chauffeur</Link>
+                    )}
+                    {client.pro && (
+                      <Link href={`/services/pros/${client.pro.id}`} className="text-emerald-600 hover:text-emerald-900">→ Pro</Link>
+                    )}
                     {client.status === 'active' && (
                       <button onClick={() => handleSuspend(client.id)} className="text-orange-600 hover:text-orange-900">Suspendre</button>
                     )}
