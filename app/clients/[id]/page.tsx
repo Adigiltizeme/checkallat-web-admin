@@ -105,12 +105,12 @@ export default function ClientDetailPage() {
           <p className="text-gray-500 text-sm">{client.phone}</p>
           <div className="flex gap-2 mt-2 flex-wrap">
             {hasPro && (
-              <Link href={`/services/pros/${client.pro.id}`} prefetch={false}>
+              <Link href={`/pros/${client.pro.id}`}>
                 <RoleBadge icon="🔧" label="→ Pro" color="emerald" />
               </Link>
             )}
             {hasDriver && (
-              <Link href={`/transport/drivers/${client.driver.id}`} prefetch={false}>
+              <Link href={`/drivers/${client.driver.id}`}>
                 <RoleBadge icon="🚚" label="→ Chauffeur" color="blue" />
               </Link>
             )}

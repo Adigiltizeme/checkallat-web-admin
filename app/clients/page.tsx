@@ -336,10 +336,10 @@ export default function ClientsPage() {
                     <Link href={`/clients/${client.id}`} className="text-blue-600 hover:text-blue-900">Détails</Link>
                     <button onClick={() => setEditingUser(client)} className="text-indigo-600 hover:text-indigo-900">Modifier</button>
                     {client.driver && (
-                      <Link href={`/transport/drivers/${client.driver.id}`} prefetch={false} className="text-blue-500 hover:text-blue-800">→ Chauffeur</Link>
+                      <Link href={`/drivers/${client.driver.id}`} className="text-blue-500 hover:text-blue-800">→ Chauffeur</Link>
                     )}
                     {client.pro && (
-                      <Link href={`/services/pros/${client.pro.id}`} prefetch={false} className="text-emerald-600 hover:text-emerald-900">→ Pro</Link>
+                      <Link href={`/pros/${client.pro.id}`} className="text-emerald-600 hover:text-emerald-900">→ Pro</Link>
                     )}
                     {client.status === 'active' && (
                       <button onClick={() => handleSuspend(client.id)} className="text-orange-600 hover:text-orange-900">Suspendre</button>
