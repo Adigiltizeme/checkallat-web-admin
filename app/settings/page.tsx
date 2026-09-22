@@ -556,8 +556,10 @@ export default function SettingsPage() {
                     <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">
                       {formatCurrency(p.basePrice, p.currency)}
                     </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
-                      {p.urgencyMultiplier}×
+                    <td className="px-6 py-3 whitespace-nowrap text-sm">
+                      {p.urgencyEnabled
+                        ? <span className="text-orange-600 font-medium">{p.urgencyMultiplier}×</span>
+                        : <span className="text-gray-400">Désactivée</span>}
                     </td>
                     <td className="px-6 py-3 text-sm">
                       {ruleKeys.length > 0 ? (

@@ -10,6 +10,7 @@ interface ServicePricing {
   countryId: string;
   currency: string;
   basePrice: number;
+  urgencyEnabled: boolean;
   urgencyMultiplier: number;
   pricingRules: Record<string, any>;
   isActive: boolean;
@@ -71,6 +72,7 @@ export function ServicePricingModal({ isOpen, onClose, pricings, zones = [], def
     countryId: initialZoneId,
     currency: initialCurrency,
     basePrice: 200,
+    urgencyEnabled: true,
     urgencyMultiplier: 1.3,
     isActive: true,
     notes: '',
@@ -269,14 +271,28 @@ export function ServicePricingModal({ isOpen, onClose, pricings, zones = [], def
                   </div>
 
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Multiplicateur urgence</label>
+                    <div className="flex items-center gap-2 mb-1">
+                      <input
+                        type="checkbox"
+                        id="newUrgencyEnabled"
+                        checked={newForm.urgencyEnabled}
+                        onChange={(e) => setNewForm((f) => ({ ...f, urgencyEnabled: e.target.checked }))}
+                      />
+                      <label htmlFor="newUrgencyEnabled" className="text-xs text-gray-600">Majoration immédiat activée</label>
+                    </div>
                     <input
                       type="number"
                       step="0.1"
-                      className="w-full border rounded px-3 py-2 text-sm"
+                      disabled={!newForm.urgencyEnabled}
+                      className={`w-full border rounded px-3 py-2 text-sm ${!newForm.urgencyEnabled ? 'opacity-40 cursor-not-allowed bg-gray-100' : ''}`}
                       value={newForm.urgencyMultiplier}
                       onChange={(e) => setNewForm((f) => ({ ...f, urgencyMultiplier: Number(e.target.value) }))}
                     />
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {newForm.urgencyEnabled
+                        ? `×${newForm.urgencyMultiplier} sur commandes immédiates`
+                        : 'Désactivé — même prix que planifié'}
+                    </p>
                   </div>
 
                   <div className="flex items-center gap-2 pt-4">
@@ -362,16 +378,27 @@ export function ServicePricingModal({ isOpen, onClose, pricings, zones = [], def
                   </div>
 
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Multiplicateur urgence</label>
+                    <div className="flex items-center gap-2 mb-1">
+                      <input
+                        type="checkbox"
+                        id="urgencyEnabled"
+                        checked={selected.urgencyEnabled ?? true}
+                        onChange={(e) => updateSelected('urgencyEnabled', e.target.checked)}
+                      />
+                      <label htmlFor="urgencyEnabled" className="text-xs text-gray-600">Majoration immédiat activée</label>
+                    </div>
                     <input
                       type="number"
                       step="0.1"
-                      className="w-full border rounded px-3 py-2 text-sm"
+                      disabled={!(selected.urgencyEnabled ?? true)}
+                      className={`w-full border rounded px-3 py-2 text-sm ${!(selected.urgencyEnabled ?? true) ? 'opacity-40 cursor-not-allowed bg-gray-100' : ''}`}
                       value={selected.urgencyMultiplier}
                       onChange={(e) => updateSelected('urgencyMultiplier', Number(e.target.value))}
                     />
                     <p className="text-xs text-gray-400 mt-0.5">
-                      Prix urgent : {formatCurrency(selected.basePrice * selected.urgencyMultiplier, selected.currency)}
+                      {(selected.urgencyEnabled ?? true)
+                        ? `Prix immédiat : ${formatCurrency(selected.basePrice * selected.urgencyMultiplier, selected.currency)}`
+                        : 'Désactivé — même prix que planifié'}
                     </p>
                   </div>
 

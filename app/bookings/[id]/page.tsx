@@ -515,6 +515,20 @@ export default function BookingDetailPage() {
             <span className="text-gray-600">Prix estimé</span>
             <span className="font-medium text-gray-900">{booking.estimatedPrice ? `${booking.estimatedPrice} ${(booking as any).currency ?? ''}` : '—'}</span>
           </div>
+          {((booking as any).selectedExtras ?? []).length > 0 && (
+            <div className="mt-1 ml-2 space-y-1">
+              {((booking as any).selectedExtras as { id: string; label: string; price: number }[]).map((extra) => (
+                <div key={extra.id} className="flex justify-between text-sm text-gray-500">
+                  <span>+ {extra.label}</span>
+                  <span>+{extra.price} {(booking as any).currency ?? ''}</span>
+                </div>
+              ))}
+              <div className="flex justify-between text-sm font-medium text-gray-700 border-t pt-1">
+                <span>Total extras</span>
+                <span>{(booking as any).extrasTotal} {(booking as any).currency ?? ''}</span>
+              </div>
+            </div>
+          )}
           {booking.finalPrice != null && (
             <div className="flex justify-between">
               <span className="text-gray-600">Prix final</span>
