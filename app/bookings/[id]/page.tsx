@@ -473,6 +473,44 @@ export default function BookingDetailPage() {
             <span className="text-gray-600">Prix estimé</span>
             <span className="font-medium text-gray-900">{booking.estimatedPrice ? `${booking.estimatedPrice} ${(booking as any).currency ?? ''}` : '—'}</span>
           </div>
+          {/* Prestation à l'heure : tarif figé, temps réel, temps supplémentaire */}
+          {(booking as any).pricingMode === 'hourly' && (() => {
+            const b = booking as any;
+            const cur = b.currency ?? '';
+            const fmtMin = (m?: number | null) => (m == null ? '—' : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`);
+            const overtimeLabels: Record<string, string> = {
+              pending: 'en attente du client', approved: 'accepté', declined: 'refusé', expired: 'sans réponse',
+            };
+            return (
+              <div className="rounded-lg bg-teal-50/60 border border-teal-100 p-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tarif</span>
+                  <span className="text-gray-900">{b.hourlyRate} {cur}/h + déplacement {b.callOutFee ?? 0} {cur}{b.priceMultiplier > 1 ? ` · urgence ×${b.priceMultiplier}` : ''}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Durée choisie (plafond)</span>
+                  <span className="text-gray-900">{b.estimatedHours} h · minimum {b.minimumHours} h</span>
+                </div>
+                {(b.approvedOvertimeMinutes > 0 || b.overtimeRequestStatus) && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Temps supplémentaire</span>
+                    <span className="text-gray-900">
+                      {b.approvedOvertimeMinutes > 0 ? `${b.approvedOvertimeMinutes} min accepté(s)` : ''}
+                      {b.overtimeRequestStatus && b.overtimeRequestStatus !== 'approved'
+                        ? `${b.approvedOvertimeMinutes > 0 ? ' · ' : ''}dernière demande ${b.overtimeRequestMinutes} min : ${overtimeLabels[b.overtimeRequestStatus] ?? b.overtimeRequestStatus}`
+                        : ''}
+                    </span>
+                  </div>
+                )}
+                {b.workedMinutes != null && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Temps réel / facturé</span>
+                    <span className="font-medium text-gray-900">{fmtMin(b.workedMinutes)} / {fmtMin(b.billedMinutes)}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {((booking as any).selectedExtras ?? []).length > 0 && (
             <div className="mt-1 ml-2 space-y-1">
               {((booking as any).selectedExtras as { id: string; label: string; price: number }[]).map((extra) => (
@@ -482,7 +520,7 @@ export default function BookingDetailPage() {
                 </div>
               ))}
               <div className="flex justify-between text-sm font-medium text-gray-700 border-t pt-1">
-                <span>Total extras</span>
+                <span>Total suppléments (inclus + choisis)</span>
                 <span>{(booking as any).extrasTotal} {(booking as any).currency ?? ''}</span>
               </div>
             </div>

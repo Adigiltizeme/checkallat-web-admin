@@ -172,6 +172,25 @@ export default function TermsPage() {
             <p className="mb-2">
               <strong>En cas de refus du prix proposé par le client</strong> : si aucun paiement n'a été effectué, la demande de service est annulée et aucune transaction n'est prélevée.
             </p>
+            <p className="mb-2">
+              Le prix d'une réservation est toujours calculé par la plateforme d'après le tarif en vigueur dans le pays, la majoration d'urgence éventuelle et les suppléments choisis. Le montant affiché avant confirmation est celui qui est réservé ou dû.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">4 bis-1. Prestations facturées à l'heure</h2>
+            <p className="mb-2">
+              Pour certains métiers (par exemple plomberie, électricité, bricolage, menuiserie, ménage), la prestation est facturée au temps passé, selon un tarif horaire fixé par la plateforme pour chaque pays et affiché avant la réservation :
+            </p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><strong>Prix</strong> : frais de déplacement éventuels + tarif horaire × temps facturé, auxquels s'ajoutent la majoration d'urgence (réservation immédiate) et les suppléments choisis. Le prestataire ne peut pas modifier ce tarif.</li>
+              <li><strong>Durée estimée</strong> : le client choisit une durée à la réservation. Elle constitue le plafond facturable : le montant correspondant est affiché comme « total maximum » et, en cas de paiement intégré, réservé sur la carte du client.</li>
+              <li><strong>Temps réel</strong> : le temps est mesuré entre le démarrage de l'intervention et la fin déclarée par le prestataire dans l'application, puis facturé par tranches de 15 minutes, avec un minimum d'heures indiqué avant la réservation.</li>
+              <li><strong>Dépassement</strong> : au-delà de la durée estimée, le prestataire doit demander du temps supplémentaire dans l'application. Le client l'accepte ou le refuse ; sans accord, aucun temps au-delà du plafond n'est facturé. En cas de paiement intégré, le temps supplémentaire accepté fait l'objet d'une réservation complémentaire sur la carte.</li>
+              <li><strong>Prestation plus courte</strong> : seul le montant dû est débité ; le reste de la somme réservée est libéré sans frais.</li>
+              <li><strong>Paiement en espèces</strong> : le montant à régler est calculé par l'application d'après le temps passé et affiché aux deux parties.</li>
+              <li>Le client peut contester le temps facturé en ouvrant un litige depuis la réservation, dans le délai de réclamation applicable.</li>
+            </ul>
           </section>
 
           <section>

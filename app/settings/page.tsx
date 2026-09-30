@@ -613,7 +613,20 @@ export default function SettingsPage() {
                           {CATEGORY_LABELS[p.categorySlug as string] ?? p.categorySlug}
                         </td>
                         <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">
-                          {formatCurrency(p.basePrice, p.currency)}
+                          {p.pricingMode === 'hourly' && p.hourlyRate > 0 ? (
+                            <span>
+                              <span className="mr-1.5 rounded bg-teal-50 px-1.5 py-0.5 text-xs font-medium text-teal-700">À l&apos;heure</span>
+                              {formatCurrency(p.hourlyRate, p.currency)}/h
+                              <span className="block text-xs text-gray-500">
+                                + déplacement {formatCurrency(p.callOutFee ?? 0, p.currency)} · min. {p.minimumHours ?? 1} h
+                              </span>
+                            </span>
+                          ) : (
+                            <span>
+                              <span className="mr-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600">Forfait</span>
+                              {formatCurrency(p.basePrice, p.currency)}
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-3 whitespace-nowrap text-sm">
                           {p.urgencyEnabled

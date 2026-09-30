@@ -15,6 +15,42 @@ interface ServicePricing {
   pricingRules: Record<string, any>;
   isActive: boolean;
   notes?: string;
+  /** "flat" (forfait) | "hourly" (déplacement + tarif horaire × durée) */
+  pricingMode?: 'flat' | 'hourly';
+  hourlyRate?: number | null;
+  callOutFee?: number;
+  minimumHours?: number;
+}
+
+/** Métiers conseillés à l'heure (le choix reste libre pour chaque métier et chaque pays) */
+const HOURLY_BY_DEFAULT = ['plumbing', 'electricity', 'handyman', 'carpentry', 'cleaning'];
+
+/** Règles JSON avancées : éditées en texte, appliquées seulement si le JSON est valide */
+function AdvancedRules({ value, onChange }: { value: Record<string, any>; onChange: (v: Record<string, any>) => void }) {
+  const [text, setText] = useState(() => JSON.stringify(value ?? {}, null, 2));
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <details className="rounded border border-gray-200 px-3 py-2">
+      <summary className="cursor-pointer text-xs text-gray-600">Règles avancées (JSON, facultatif — m², unités…)</summary>
+      <textarea
+        rows={4}
+        className="mt-2 w-full border rounded px-3 py-2 text-sm font-mono"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          try {
+            const parsed = JSON.parse(e.target.value || '{}');
+            if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
+            setError(null);
+            onChange(parsed);
+          } catch {
+            setError('JSON invalide : la modification n’est pas prise en compte.');
+          }
+        }}
+      />
+      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+    </details>
+  );
 }
 
 interface ServiceZone {
@@ -347,9 +383,94 @@ export function ServicePricingModal({ isOpen, onClose, pricings, zones = [], def
                   </button>
                 </div>
 
+                {/* Mode de tarification */}
+                <div className="rounded-lg border border-gray-200 p-3 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-gray-600 mr-1">Tarification :</span>
+                    {(['flat', 'hourly'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => updateSelected('pricingMode', mode)}
+                        className={`px-3 py-1.5 text-sm rounded-md border ${
+                          (selected.pricingMode ?? 'flat') === mode
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        {mode === 'flat' ? 'Forfait' : 'À l’heure'}
+                      </button>
+                    ))}
+                    {HOURLY_BY_DEFAULT.includes(selected.categorySlug) && (selected.pricingMode ?? 'flat') === 'flat' && (
+                      <span className="text-xs text-amber-600">Métier généralement facturé à l’heure</span>
+                    )}
+                  </div>
+
+                  {(selected.pricingMode ?? 'flat') === 'hourly' ? (
+                    <>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Tarif horaire</label>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min={0}
+                              className="flex-1 border rounded px-3 py-2 text-sm"
+                              value={selected.hourlyRate ?? ''}
+                              onChange={(e) => updateSelected('hourlyRate', e.target.value === '' ? null : Number(e.target.value))}
+                            />
+                            <span className="text-xs text-gray-500">{selected.currency}/h</span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Frais de déplacement</label>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min={0}
+                              className="flex-1 border rounded px-3 py-2 text-sm"
+                              value={selected.callOutFee ?? 0}
+                              onChange={(e) => updateSelected('callOutFee', Number(e.target.value))}
+                            />
+                            <span className="text-xs text-gray-500">{selected.currency}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Minimum facturé</label>
+                          <select
+                            className="w-full border rounded px-3 py-2 text-sm"
+                            value={selected.minimumHours ?? 1}
+                            onChange={(e) => updateSelected('minimumHours', Number(e.target.value))}
+                          >
+                            {[0.5, 1, 1.5, 2, 3, 4].map((h) => (
+                              <option key={h} value={h}>{h === 0.5 ? '30 min' : `${h} h`}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      {!(Number(selected.hourlyRate) > 0) ? (
+                        <p className="text-xs text-red-600">Indiquez un tarif horaire : sans lui, le métier reste facturé au forfait.</p>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          Exemple affiché au client pour 2 h :{' '}
+                          <strong>
+                            {formatCurrency(selected.callOutFee ?? 0, selected.currency)} + {formatCurrency(Number(selected.hourlyRate), selected.currency)}/h × 2 h ={' '}
+                            {formatCurrency((selected.callOutFee ?? 0) + Number(selected.hourlyRate) * Math.max(2, selected.minimumHours ?? 1), selected.currency)}
+                          </strong>
+                          . Temps réel facturé par tranches de 15 min, au moins {selected.minimumHours ?? 1} h, jamais au-delà de la durée choisie sans l’accord du client.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-500">Le client paie le prix de base ci-dessous, quel que soit le temps passé.</p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Prix de base</label>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      {(selected.pricingMode ?? 'flat') === 'hourly' ? 'Prix de base (utilisé si le tarif horaire est retiré)' : 'Prix de base (forfait)'}
+                    </label>
                     <div className="flex items-center gap-1">
                       <input
                         type="number"
@@ -414,14 +535,10 @@ export function ServicePricingModal({ isOpen, onClose, pricings, zones = [], def
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Règles tarifaires (JSON)</label>
-                  <textarea
-                    rows={4}
-                    className="w-full border rounded px-3 py-2 text-sm font-mono"
-                    value={JSON.stringify(selected.pricingRules, null, 2)}
-                    onChange={(e) => {
-                      try { updateSelected('pricingRules', JSON.parse(e.target.value)); } catch { /* ignore */ }
-                    }}
+                  <AdvancedRules
+                    key={selected.id}
+                    value={selected.pricingRules}
+                    onChange={(v) => updateSelected('pricingRules', v)}
                   />
                   {DEFAULT_PRICING_RULES[selected.categorySlug] && (
                     <p className="text-xs text-gray-400 mt-1">
