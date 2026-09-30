@@ -6,16 +6,13 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { isAuthenticated } from '@/lib/auth';
 import { SidebarProvider } from '@/contexts/SidebarContext';
+import { isPublicPath } from '@/lib/public-paths';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isLoginPage = pathname === '/login';
-  const isPublicPage =
-    pathname.startsWith('/track') ||
-    pathname.startsWith('/privacy') ||
-    pathname.startsWith('/terms') ||
-    pathname.startsWith('/account-deletion');
+  const isPublicPage = isPublicPath(pathname);
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {

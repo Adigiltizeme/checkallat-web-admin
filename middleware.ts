@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isPublicPath } from './lib/public-paths';
 
 const PUBLIC_PATHS = ['/login'];
-const PUBLIC_PREFIXES = ['/track', '/privacy', '/terms', '/account-deletion', '/contact'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,7 +17,7 @@ export function middleware(request: NextRequest) {
   if (
     /\.(png|jpg|jpeg|svg|ico|webp|gif|woff2?|ttf|eot|otf|css|js|map)$/.test(pathname) ||
     PUBLIC_PATHS.includes(pathname) ||
-    PUBLIC_PREFIXES.some(p => pathname.startsWith(p)) ||
+    isPublicPath(pathname) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
   ) {
