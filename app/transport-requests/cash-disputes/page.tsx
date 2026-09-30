@@ -7,7 +7,7 @@ import { formatDateTime } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useZone } from '@/contexts/ZoneContext';
 
-type Tab = 'transport' | 'services';
+type Tab = 'transport' | 'courier' | 'services';
 
 export default function CashDisputesPage() {
   const [transportDisputes, setTransportDisputes] = useState<any[]>([]);
@@ -18,7 +18,7 @@ export default function CashDisputesPage() {
   const { selectedZone } = useZone();
 
   const load = useCallback(() => {
-    apiClient.get('/admin/cash-disputes')
+    apiClient.get('/admin/cash-disputes', { params: selectedZone ? { zone: selectedZone } : undefined })
       .then((data: any) => {
         setTransportDisputes(Array.isArray(data?.transport) ? data.transport : []);
         setBookingDisputes(Array.isArray(data?.booking) ? data.booking : []);
@@ -32,6 +32,10 @@ export default function CashDisputesPage() {
   if (loading) return <div className="text-center py-12">Chargement...</div>;
 
   const totalDisputes = transportDisputes.length + bookingDisputes.length;
+  // Transport & Déménagement et CheckAllPack partagent le modèle TransportRequest
+  const standardDisputes = transportDisputes.filter((d: any) => d.vehicleCategory !== 'courier');
+  const courierDisputes = transportDisputes.filter((d: any) => d.vehicleCategory === 'courier');
+  const shownTransportDisputes = activeTab === 'courier' ? courierDisputes : standardDisputes;
   const transportAmount = transportDisputes.reduce((s: number, d: any) => s + (d.totalPrice || 0), 0);
   const bookingAmount = bookingDisputes.reduce((s: number, d: any) => s + (d.finalPrice || d.estimatedPrice || 0), 0);
 
@@ -49,9 +53,11 @@ export default function CashDisputesPage() {
           <p className="text-3xl font-bold text-red-600 mt-1">{totalDisputes}</p>
         </div>
         <div className="bg-purple-50 rounded-lg shadow p-5 border border-purple-200">
-          <p className="text-sm font-medium text-purple-700">Transport</p>
+          <p className="text-sm font-medium text-purple-700">Transport &amp; CheckAllPack</p>
           <p className="text-2xl font-bold text-purple-600 mt-1">{transportDisputes.length}</p>
-          <p className="text-xs text-purple-500 mt-0.5">{formatCurrency(transportAmount)} en jeu</p>
+          <p className="text-xs text-purple-500 mt-0.5">
+            {standardDisputes.length} transport · {courierDisputes.length} CheckAllPack — {formatCurrency(transportAmount)} en jeu
+          </p>
         </div>
         <div className="bg-green-50 rounded-lg shadow p-5 border border-green-200">
           <p className="text-sm font-medium text-green-700">Services</p>
@@ -68,7 +74,8 @@ export default function CashDisputesPage() {
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-6">
           {([
-            { key: 'transport', label: `🚚 Transport (${transportDisputes.length})` },
+            { key: 'transport', label: `🚚 Transport (${standardDisputes.length})` },
+            { key: 'courier',   label: `📦 CheckAllPack (${courierDisputes.length})` },
             { key: 'services',  label: `🔧 Services (${bookingDisputes.length})` },
           ] as { key: Tab; label: string }[]).map(({ key, label }) => (
             <button
@@ -86,19 +93,19 @@ export default function CashDisputesPage() {
         </nav>
       </div>
 
-      {/* Onglet Transport */}
-      {activeTab === 'transport' && (
+      {/* Onglets Transport et CheckAllPack (même tableau, livreur au lieu de chauffeur) */}
+      {(activeTab === 'transport' || activeTab === 'courier') && (
         <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {['ID', 'Client', 'Chauffeur', 'Prix attendu', 'Déclaré client', 'Déclaré chauffeur', 'Écart', 'Date', 'Action'].map(h => (
+                {['ID', 'Client', activeTab === 'courier' ? 'Livreur' : 'Chauffeur', 'Prix attendu', 'Déclaré client', activeTab === 'courier' ? 'Déclaré livreur' : 'Déclaré chauffeur', 'Écart', 'Date', 'Action'].map(h => (
                   <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {transportDisputes.map((d: any) => {
+              {shownTransportDisputes.map((d: any) => {
                 const clientAmt = d.cashAmountDeclaredByClient || 0;
                 const driverAmt = d.cashAmountDeclaredByDriver || 0;
                 const expected = d.totalPrice || 0;
@@ -124,8 +131,10 @@ export default function CashDisputesPage() {
                   </tr>
                 );
               })}
-              {transportDisputes.length === 0 && (
-                <tr><td colSpan={9} className="px-6 py-12 text-center text-gray-500">✅ Aucun litige transport</td></tr>
+              {shownTransportDisputes.length === 0 && (
+                <tr><td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                  ✅ Aucun litige {activeTab === 'courier' ? 'CheckAllPack' : 'transport'}
+                </td></tr>
               )}
             </tbody>
           </table>

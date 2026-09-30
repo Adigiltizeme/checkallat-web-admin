@@ -47,7 +47,7 @@ export default function ProsPage() {
 
   const loadData = () => {
     Promise.all([
-      apiClient.get('/admin/pros') as Promise<any>,
+      apiClient.get('/admin/pros', { params: selectedZone ? { zone: selectedZone } : undefined }) as Promise<any>,
       apiClient.get('/admin/service-categories') as Promise<any>,
     ])
       .then(([prosData, catsData]) => {

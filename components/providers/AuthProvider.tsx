@@ -10,11 +10,12 @@ import { SidebarProvider } from '@/contexts/SidebarContext';
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isLoginPage = pathname === '/login' || pathname === '/test-login';
+  const isLoginPage = pathname === '/login';
   const isPublicPage =
     pathname.startsWith('/track') ||
     pathname.startsWith('/privacy') ||
-    pathname.startsWith('/terms');
+    pathname.startsWith('/terms') ||
+    pathname.startsWith('/account-deletion');
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {

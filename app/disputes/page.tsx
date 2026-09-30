@@ -8,8 +8,10 @@ import { useZone } from '@/contexts/ZoneContext';
 
 const SECTOR_TABS = [
   { key: 'all',       label: 'Tous',        type: undefined },
-  { key: 'transport', label: '🚚 Transport', type: 'transport' },
-  { key: 'services',  label: '🔧 Services',  type: 'booking' },
+  { key: 'transport',   label: '🚚 Transport',    type: 'transport' },
+  { key: 'courier',     label: '📦 CheckAllPack', type: 'courier' },
+  { key: 'services',    label: '🔧 Services',     type: 'booking' },
+  { key: 'marketplace', label: '🛒 Marketplace',  type: 'marketplace' },
 ];
 
 export default function DisputesPage() {
@@ -126,6 +128,11 @@ export default function DisputesPage() {
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
                   {dispute.type || 'N/A'}
+                  {dispute.transportRequest?.vehicleCategory === 'courier' && (
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-sky-100 text-sky-800">
+                      📦 CheckAllPack
+                    </span>
+                  )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
                   {dispute.requestedBy?.firstName} {dispute.requestedBy?.lastName}

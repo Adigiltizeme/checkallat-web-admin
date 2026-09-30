@@ -137,6 +137,13 @@ class ApiClient {
     const response = await this.client.delete<T>(url, config);
     return response.data;
   }
+
+  async uploadFile<T>(url: string, formData: FormData): Promise<T> {
+    const response = await this.client.post<T>(url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
 }
 
 export const apiClient = new ApiClient();

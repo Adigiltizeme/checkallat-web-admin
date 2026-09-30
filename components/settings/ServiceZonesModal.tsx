@@ -15,6 +15,8 @@ interface ServiceZone {
   mapboxLanguage: string;
   enabled: boolean;
   requireHealthCertificate?: boolean;
+  /** Candidatures (chauffeur, livreur, prestataire, vendeur) : e-mail vérifié obligatoire dans ce pays */
+  requireVerifiedEmail?: boolean;
 }
 
 interface ServiceZonesModalProps {
@@ -147,6 +149,7 @@ const EMPTY_ZONE: ServiceZone = {
   mapboxLanguage: 'ar',
   enabled: true,
   requireHealthCertificate: false,
+  requireVerifiedEmail: false,
 };
 
 export function ServiceZonesModal({ isOpen, onClose, zones, onSave }: ServiceZonesModalProps) {
@@ -567,6 +570,23 @@ export function ServiceZonesModal({ isOpen, onClose, zones, onSave }: ServiceZon
                   className="accent-orange-600"
                 />
                 <label htmlFor="zone-health" className="text-sm text-gray-700">Certificat sanitaire requis</label>
+              </div>
+
+              {/* E-mail vérifié pour candidater */}
+              <div className="flex items-start gap-2 pt-3">
+                <input
+                  type="checkbox"
+                  id="zone-email"
+                  checked={form.requireVerifiedEmail ?? false}
+                  onChange={(e) => updateField('requireVerifiedEmail', e.target.checked)}
+                  className="accent-teal-600 mt-0.5"
+                />
+                <label htmlFor="zone-email" className="text-sm text-gray-700">
+                  E-mail vérifié requis pour candidater
+                  <span className="block text-xs text-gray-500">
+                    Chauffeurs, livreurs, prestataires et vendeurs. Décoché : vérification recommandée mais non bloquante.
+                  </span>
+                </label>
               </div>
             </div>
 

@@ -18,6 +18,7 @@ interface Transaction {
 
 const TYPE_LABELS: Record<string, string> = {
   transport: 'Transport',
+  courier: 'CheckAllPack',
   booking: 'Réservation',
   order: 'Commande',
 };
@@ -37,7 +38,7 @@ export function TransactionsTable() {
 
   useEffect(() => {
     setLoading(true);
-    apiClient.get<Transaction[]>('/admin/recent-transactions')
+    apiClient.get<Transaction[]>('/admin/recent-transactions', { params: selectedZone ? { zone: selectedZone } : undefined })
       .then(setTransactions)
       .catch(console.error)
       .finally(() => setLoading(false));

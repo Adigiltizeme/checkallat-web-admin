@@ -282,7 +282,9 @@ export default function ExtrasReviewPage() {
     setLoading(true);
     try {
       const [extrasRes, catsRes] = await Promise.all([
-        apiClient.get('/services/offerings/extras/pending?limit=200') as Promise<{ items: ExtraItem[]; total: number }>,
+        apiClient.get('/services/offerings/extras/pending', {
+          params: { limit: 200, ...(selectedZone ? { zone: selectedZone } : {}) },
+        }) as Promise<{ items: ExtraItem[]; total: number }>,
         apiClient.get('/services/categories?activeOnly=false') as Promise<CategoryMeta[]>,
       ]);
       setAllExtras(extrasRes.items ?? []);
@@ -296,7 +298,7 @@ export default function ExtrasReviewPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedZone]);
 
   useEffect(() => { load(); }, [load]);
 

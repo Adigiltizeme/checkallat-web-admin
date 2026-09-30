@@ -9,12 +9,14 @@ const SECTOR_TABS = [
   { key: 'all',       label: 'Tous',        entityType: undefined },
   { key: 'booking',   label: '🔧 Services',  entityType: 'booking' },
   { key: 'transport', label: '🚚 Transport', entityType: 'transport' },
+  { key: 'courier',   label: '📦 CheckAllPack', entityType: 'courier' },
   { key: 'order',     label: '🛒 Marketplace', entityType: 'order' },
 ];
 
 const ENTITY_LABEL: Record<string, string> = {
   booking:   'Réservation',
   transport: 'Transport',
+  courier: 'CheckAllPack',
   order:     'Commande',
 };
 
@@ -30,6 +32,8 @@ const STATUS_COLOR: Record<string, string> = {
 type Conversation = {
   id: string;
   entityType: string;
+  /** 'courier' pour une course CheckAllPack (entityType reste 'transport') */
+  sector?: string;
   entityId: string;
   participant1: string;
   participant2: string;
@@ -219,7 +223,7 @@ export default function ConversationsPage() {
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
-                        {ENTITY_LABEL[conv.entityType] ?? conv.entityType}
+                        {ENTITY_LABEL[conv.sector ?? conv.entityType] ?? conv.entityType}
                       </span>
                       <span className="text-xs text-gray-400">{conv.messageCount} msg</span>
                       <span className="text-xs text-gray-400 ml-auto">
@@ -276,7 +280,7 @@ export default function ConversationsPage() {
                     {selectedConv.participant1} ↔ {selectedConv.participant2}
                   </div>
                   <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
-                    <span>{ENTITY_LABEL[selectedConv.entityType]}</span>
+                    <span>{ENTITY_LABEL[selectedConv.sector ?? selectedConv.entityType]}</span>
                     <span className="text-gray-300">•</span>
                     <span className="font-mono">{selectedConv.entityId}</span>
                   </div>

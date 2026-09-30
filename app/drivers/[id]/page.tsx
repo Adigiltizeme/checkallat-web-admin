@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { KybFranceCard } from '@/components/KybFranceCard';
+import { DRIVER_SCOPE_CONFIG, driverScopeOf } from '@/lib/driverScope';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'En attente',
@@ -26,6 +27,13 @@ const VEHICLE_LABELS: Record<string, string> = {
   van: 'Camionnette',
   small_truck: 'Petit camion',
   large_truck: 'Grand camion',
+  motorbike: 'Deux-roues motorisé',
+  bicycle: 'Vélo / VAE',
+};
+
+const MOTORBIKE_CLASS_LABELS: Record<string, string> = {
+  moped: 'Cyclomoteur (≤ 50 cm³ / électrique ≤ 4 kW)',
+  motorcycle: 'Moto (> 50 cm³)',
 };
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -120,6 +128,19 @@ export default function DriverDetailPage() {
     }
   };
 
+  const handleResetSpeedAnomalies = async () => {
+    if (!confirm('Confirmer que le véhicule a été vérifié et remettre les alertes de vitesse à zéro ?')) return;
+    setProcessing(true);
+    try {
+      await apiClient.patch(`/admin/drivers/${params.id}`, { resetSpeedAnomalies: true });
+      loadData();
+    } catch (error: any) {
+      alert('Erreur: ' + (error.response?.data?.message || 'Une erreur est survenue'));
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const handleRequestKycRenewal = async () => {
     if (!kycReason.trim()) {
       alert('Veuillez indiquer la raison du renouvellement demandé.');
@@ -173,10 +194,10 @@ export default function DriverDetailPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <button
-            onClick={() => router.push('/drivers')}
+            onClick={() => router.push(DRIVER_SCOPE_CONFIG[driverScopeOf(driver.vehicleType)].listHref)}
             className="text-sm text-gray-500 hover:text-gray-700 mb-1 flex items-center gap-1"
           >
-            ← Retour aux chauffeurs
+            ← {driverScopeOf(driver.vehicleType) === 'courier' ? 'Retour aux livreurs CheckAllPack' : 'Retour aux chauffeurs'}
           </button>
           <h1 className="text-3xl font-bold text-gray-900">
             {driver.user?.firstName} {driver.user?.lastName}
@@ -194,6 +215,29 @@ export default function DriverDetailPage() {
         </div>
       </div>
 
+      {/* Vélo : vitesses incompatibles relevées pendant des courses (véhicule motorisé non déclaré ?) */}
+      {(driver.speedAnomalyCount ?? 0) > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="font-semibold text-red-800">
+              ⚠️ {driver.speedAnomalyCount} vitesse(s) incompatible(s) avec un vélo pendant des courses
+            </p>
+            <p className="text-sm text-red-700 mt-1">
+              Dernière détection : {driver.lastSpeedAnomalyAt ? formatDate(driver.lastSpeedAnomalyAt) : '—'}.
+              Le livreur utilise peut-être un véhicule motorisé sans plaque ni permis vérifiés : contactez-le, demandez une
+              photo de son véhicule ou suspendez le compte.
+            </p>
+          </div>
+          <button
+            onClick={handleResetSpeedAnomalies}
+            disabled={processing}
+            className="px-4 py-2 text-sm font-medium rounded-md border border-red-300 text-red-700 hover:bg-red-100 disabled:opacity-50"
+          >
+            Véhicule vérifié — réinitialiser
+          </button>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Infos personnelles */}
         <div className="bg-white rounded-lg shadow p-6 space-y-3">
@@ -201,7 +245,14 @@ export default function DriverDetailPage() {
           <InfoRow label="Téléphone" value={driver.user?.phone} />
           <InfoRow label="Email" value={driver.user?.email || '—'} />
           <InfoRow label="Type de véhicule" value={VEHICLE_LABELS[driver.vehicleType] || driver.vehicleType} />
-          <InfoRow label="Plaque" value={driver.vehiclePlate || '—'} />
+          {driver.vehicleType === 'motorbike' && (
+            <InfoRow label="Catégorie" value={MOTORBIKE_CLASS_LABELS[driver.motorbikeClass] || '—'} />
+          )}
+          <InfoRow label="Plaque" value={driver.vehicleType === 'bicycle' ? 'Sans objet (vélo)' : driver.vehiclePlate || '—'} />
+          <InfoRow
+            label="Engagement véhicule"
+            value={driver.vehicleDeclarationAt ? `Signé le ${formatDate(driver.vehicleDeclarationAt)}` : 'Non signé'}
+          />
           <InfoRow label="Capacité" value={driver.vehicleCapacity ? `${driver.vehicleCapacity} m³` : '—'} />
           <InfoRow label="Zone service" value={driver.serviceRadius ? `${driver.serviceRadius} km` : '—'} />
           <InfoRow label="Inscrit le" value={formatDate(driver.createdAt)} />
@@ -254,7 +305,7 @@ export default function DriverDetailPage() {
             </button>
           )}
           <button
-            onClick={() => router.push('/drivers')}
+            onClick={() => router.push(DRIVER_SCOPE_CONFIG[driverScopeOf(driver.vehicleType)].listHref)}
             className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium"
           >
             ← Retour à la liste
@@ -324,7 +375,9 @@ export default function DriverDetailPage() {
       {/* Document du véhicule (carte grise) */}
       {vehicleDocUrl && (
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Document du véhicule</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            {driver.vehicleType === 'bicycle' ? 'Justificatif du vélo (facture / assurance)' : 'Document du véhicule'}
+          </h2>
           <button
             onClick={() => setLightboxSrc(vehicleDocUrl)}
             className="relative group overflow-hidden rounded-lg border border-gray-200 inline-block hover:border-primary transition-colors"

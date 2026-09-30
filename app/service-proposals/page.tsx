@@ -27,6 +27,7 @@ export default function ServiceProposalsPage() {
     setLoading(true);
     const params: Record<string, string> = {};
     if (status !== 'all') params.status = status;
+    if (selectedZone) params.zone = selectedZone;
     apiClient.get('/admin/service-proposals', { params })
       .then((data: any) => {
         setProposals(Array.isArray(data?.proposals) ? data.proposals : []);
@@ -35,7 +36,7 @@ export default function ServiceProposalsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedZone]);
 
   useEffect(() => { load(activeTab); }, [load, activeTab]);
 

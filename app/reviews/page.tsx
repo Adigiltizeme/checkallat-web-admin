@@ -50,16 +50,17 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 type Tab = 'reviews' | 'bad-reviews';
-type SectorTab = 'all' | 'transport' | 'services';
+type SectorTab = 'all' | 'transport' | 'courier' | 'services';
 
 const SECTOR_TABS: { key: SectorTab; label: string; type?: string }[] = [
   { key: 'all',       label: 'Tous' },
-  { key: 'transport', label: '🚚 Transport', type: 'transport' },
-  { key: 'services',  label: '🔧 Services',  type: 'services' },
+  { key: 'transport', label: '🚚 Transport',    type: 'transport' },
+  { key: 'courier',   label: '📦 CheckAllPack', type: 'courier' },
+  { key: 'services',  label: '🔧 Services',     type: 'services' },
 ];
 
-// Les mauvaises notations sont gérées côté drivers (transport) et pros (services)
-const BAD_REVIEWS_AVAILABLE = ['all', 'transport', 'services'] as const;
+// Les mauvaises notations sont gérées côté drivers (transport, CheckAllPack) et pros (services)
+const BAD_REVIEWS_AVAILABLE = ['all', 'transport', 'courier', 'services'] as const;
 
 export default function ReviewsManagementPage() {
   const { selectedZone } = useZone();
@@ -77,6 +78,8 @@ export default function ReviewsManagementPage() {
 
   // ── Onglet Mauvaises Notations ────────────────────────────
   const [badDrivers, setBadDrivers] = useState<DriverWithBadReviews[]>([]);
+  // Secteur et pays pour lesquels badDrivers a été chargé
+  const [badDriversScope, setBadDriversScope] = useState<string | null>(null);
   const [badPros, setBadPros] = useState<DriverWithBadReviews[]>([]);
   const [loadingBad, setLoadingBad] = useState(false);
   const [filterRisk, setFilterRisk] = useState<string>('all');
@@ -91,10 +94,10 @@ export default function ReviewsManagementPage() {
 
   useEffect(() => {
     if (activeTab === 'bad-reviews') {
-      if (isProSector && badPros.length === 0) loadBadPros();
-      else if (!isProSector && badDrivers.length === 0) loadBadDrivers();
+      if (isProSector) loadBadPros();
+      else if (badDriversScope !== `${sectorTab}|${selectedZone}`) loadBadDrivers();
     }
-  }, [activeTab, sectorTab]);
+  }, [activeTab, sectorTab, selectedZone]);
 
   // ── Chargement des avis ────────────────────────────────────
   const loadReviews = async () => {
@@ -118,8 +121,13 @@ export default function ReviewsManagementPage() {
   const loadBadDrivers = async () => {
     try {
       setLoadingBad(true);
-      const data = await apiClient.get('/reviews/admin/bad-reviews') as DriverWithBadReviews[];
+      const scope = sectorTab === 'transport' || sectorTab === 'courier' ? sectorTab : undefined;
+      const params: Record<string, string> = {};
+      if (scope) params.scope = scope;
+      if (selectedZone) params.zone = selectedZone;
+      const data = await apiClient.get('/reviews/admin/bad-reviews', { params }) as DriverWithBadReviews[];
       setBadDrivers(Array.isArray(data) ? data : []);
+      setBadDriversScope(`${sectorTab}|${selectedZone}`);
     } catch (error) {
       console.error('Erreur mauvaises notations chauffeurs:', error);
     } finally {
@@ -130,7 +138,9 @@ export default function ReviewsManagementPage() {
   const loadBadPros = async () => {
     try {
       setLoadingBad(true);
-      const data = await apiClient.get('/reviews/admin/bad-reviews-pros') as DriverWithBadReviews[];
+      const data = await apiClient.get('/reviews/admin/bad-reviews-pros', {
+        params: selectedZone ? { zone: selectedZone } : undefined,
+      }) as DriverWithBadReviews[];
       setBadPros(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Erreur mauvaises notations pros:', error);
@@ -241,7 +251,7 @@ export default function ReviewsManagementPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            🔴 Mauvaises notations {isProSector ? 'pros' : 'chauffeurs'}
+            🔴 Mauvaises notations {isProSector ? 'pros' : sectorTab === 'courier' ? 'livreurs' : 'chauffeurs'}
             {badStats.total > 0 && (
               <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs">
                 {badStats.total}
@@ -335,7 +345,7 @@ export default function ReviewsManagementPage() {
                         ) : (
                           <>
                             Chauffeur: <span className="font-medium">{review.driver.user.firstName} {review.driver.user.lastName}</span>
-                            {review.transportRequest && <> {' • '}Transport #{review.transportRequest.id.slice(0, 8)}</>}
+                            {review.transportRequest && <> {' • '}{['motorbike', 'bicycle'].includes((review.driver as any)?.vehicleType) ? 'CheckAllPack' : 'Transport'} #{review.transportRequest.id.slice(0, 8)}</>}
                           </>
                         )}
                       </p>

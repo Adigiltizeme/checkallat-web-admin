@@ -28,14 +28,27 @@ import {
   MessageSquare,
   Tags,
   ShieldCheck,
+  LayoutGrid,
+  UserPlus,
+  BarChart3,
 } from 'lucide-react';
+import { usePendingSummary } from '@/contexts/PendingSummaryContext';
 
 type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  badgeKey?: 'pendingDrivers' | 'pendingPros' | 'pendingProposals' | 'pendingBookings' | 'pendingExtras';
+  badgeKey?: BadgeKey;
 };
+
+type BadgeKey =
+  | 'applications' | 'pendingDrivers' | 'pendingPros' | 'pendingSellers'
+  | 'pendingProposals' | 'pendingBookings' | 'pendingExtras' | 'openDisputes' | 'transfersToExecute';
+
+type Badges = Record<BadgeKey, number>;
+
+/** Candidatures : badge rose, distinct des autres éléments à traiter (jaune) */
+const APPLICATION_BADGES: BadgeKey[] = ['applications', 'pendingDrivers', 'pendingPros', 'pendingSellers'];
 
 type NavSection = {
   title: string;
@@ -49,6 +62,14 @@ const MENU_SECTIONS: NavSection[] = [
     title: 'Général',
     items: [
       { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/usage', label: "Statistiques d'usage", icon: BarChart3 },
+    ],
+  },
+  {
+    title: 'À traiter',
+    color: '#F43F5E',
+    items: [
+      { href: '/applications', label: 'Candidatures', icon: UserPlus, badgeKey: 'applications' },
     ],
   },
   {
@@ -65,7 +86,7 @@ const MENU_SECTIONS: NavSection[] = [
       { href: '/transport-requests/payment-stats', label: 'Stats Paiements',      icon: DollarSign },
       { href: '/transport-requests/cash-disputes', label: 'Litiges Cash',         icon: AlertCircle },
       { href: '/transactions',                     label: 'Transactions & Comm.', icon: CreditCard },
-      { href: '/payouts',                          label: 'Versements presta.',   icon: DollarSign },
+      { href: '/payouts',                          label: 'Versements presta.',   icon: DollarSign, badgeKey: 'transfersToExecute' },
     ],
   },
   {
@@ -73,6 +94,7 @@ const MENU_SECTIONS: NavSection[] = [
     sectorIcon: '🚚',
     color: '#F59E0B',
     items: [
+      // Onglets Transport / CheckAllPack dans chaque page ; badge = candidatures des deux secteurs
       { href: '/drivers',            label: 'Chauffeurs', icon: Truck,   badgeKey: 'pendingDrivers' },
       { href: '/transport-requests', label: 'Demandes',   icon: Package },
     ],
@@ -93,8 +115,10 @@ const MENU_SECTIONS: NavSection[] = [
     sectorIcon: '🛒',
     color: '#8B5CF6',
     items: [
-      { href: '/sellers',  label: 'Vendeurs', icon: Store },
-      { href: '/products', label: 'Produits', icon: ShoppingCart },
+      { href: '/marketplace/orders',  label: 'Commandes',         icon: Package },
+      { href: '/sellers',             label: 'Vendeurs',          icon: Store, badgeKey: 'pendingSellers' },
+      { href: '/products',            label: 'Produits',          icon: ShoppingCart },
+      { href: '/marketplace/domains', label: 'Domaines de vente', icon: Tags },
     ],
   },
   {
@@ -108,7 +132,7 @@ const MENU_SECTIONS: NavSection[] = [
     color: '#EAB308',
     items: [
       { href: '/reviews',   label: 'Avis',             icon: Star },
-      { href: '/disputes',  label: 'Litiges',          icon: AlertCircle },
+      { href: '/disputes',  label: 'Litiges',          icon: AlertCircle, badgeKey: 'openDisputes' },
     ],
   },
   {
@@ -128,6 +152,7 @@ const MENU_SECTIONS: NavSection[] = [
     title: 'Système',
     items: [
       { href: '/admins',   label: 'Admins',      icon: ShieldCheck },
+      { href: '/sectors',  label: 'Secteurs',    icon: LayoutGrid },
       { href: '/settings', label: 'Paramètres',  icon: Settings },
     ],
   },
@@ -145,34 +170,13 @@ function isNavItemActive(pathname: string | null, itemHref: string): boolean {
   return !ALL_ITEM_HREFS.some(h => h !== itemHref && h.startsWith(itemHref + '/') && pathname.startsWith(h));
 }
 
-function SidebarContent({
-  collapsed,
-  pendingDrivers,
-  pendingPros,
-  pendingProposals,
-  pendingBookings,
-  pendingExtras,
-}: {
-  collapsed: boolean;
-  pendingDrivers: number;
-  pendingPros: number;
-  pendingProposals: number;
-  pendingBookings: number;
-  pendingExtras: number;
-}) {
+function SidebarContent({ collapsed, badges }: { collapsed: boolean; badges: Badges }) {
   const pathname = usePathname();
   const { toggle, closeMobile } = useSidebar();
   const { zones, selectedZone, selectedZoneObj, setSelectedZone } = useZone();
   const [hoveredHref, setHoveredHref] = useState<string | null>(null);
 
-  const getBadge = (item: NavItem): number => {
-    if (item.badgeKey === 'pendingDrivers') return pendingDrivers;
-    if (item.badgeKey === 'pendingPros') return pendingPros;
-    if (item.badgeKey === 'pendingProposals') return pendingProposals;
-    if (item.badgeKey === 'pendingBookings') return pendingBookings;
-    if (item.badgeKey === 'pendingExtras') return pendingExtras;
-    return 0;
-  };
+  const getBadge = (item: NavItem): number => (item.badgeKey ? badges[item.badgeKey] ?? 0 : 0);
 
   return (
     <div
@@ -271,6 +275,8 @@ function SidebarContent({
                 const isActive = isNavItemActive(pathname, item.href);
                 const isHovered = hoveredHref === item.href;
                 const badge = getBadge(item);
+                const isApplication = !!item.badgeKey && APPLICATION_BADGES.includes(item.badgeKey);
+                const badgeTitle = isApplication ? `${badge} candidature(s) en attente` : `${badge} élément(s) à traiter`;
                 const iconColor = isActive || isHovered ? 'white' : (section.color ?? '#9CA3AF');
 
                 const sectionColor = section.color ?? '#00B8A9';
@@ -298,14 +304,27 @@ function SidebarContent({
                         <Icon className="h-4 w-4" />
                       </span>
                       {badge > 0 && collapsed && (
-                        <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-400 text-[9px] font-bold text-yellow-900">
+                        <span
+                          title={badgeTitle}
+                          className={cn(
+                            'absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[9px] font-bold',
+                            isApplication ? 'bg-rose-500 text-white' : 'bg-yellow-400 text-yellow-900',
+                          )}
+                        >
                           {badge > 9 ? '9+' : badge}
                         </span>
                       )}
                     </div>
                     {!collapsed && <span className="truncate flex-1">{item.label}</span>}
                     {!collapsed && badge > 0 && (
-                      <span className="ml-auto flex-shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-yellow-400 text-yellow-900 text-xs font-bold">
+                      <span
+                        title={badgeTitle}
+                        className={cn(
+                          'ml-auto flex-shrink-0 inline-flex items-center justify-center gap-0.5 min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold',
+                          isApplication ? 'bg-rose-500 text-white' : 'bg-yellow-400 text-yellow-900',
+                        )}
+                      >
+                        {isApplication && <UserPlus className="h-3 w-3" />}
                         {badge}
                       </span>
                     )}
@@ -328,15 +347,14 @@ function SidebarContent({
 
 export function Sidebar() {
   const { collapsed, mobileOpen, closeMobile } = useSidebar();
-  const [pendingDrivers, setPendingDrivers] = useState(0);
-  const [pendingPros, setPendingPros] = useState(0);
+  const { selectedZone } = useZone();
+  const { summary } = usePendingSummary();
   const [pendingProposals, setPendingProposals] = useState(0);
   const [pendingBookings, setPendingBookings] = useState(0);
   const [pendingExtras, setPendingExtras] = useState(0);
-  const prevDriversRef = useRef<number | null>(null);
-  const prevProsRef = useRef<number | null>(null);
   const prevProposalsRef = useRef<number | null>(null);
   const prevBookingsRef = useRef<number | null>(null);
+  const prevExtrasRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
@@ -351,32 +369,19 @@ export function Sidebar() {
       }
     };
 
+    // Changement de pays : les compteurs repartent de zéro (pas de fausse notification)
+    prevProposalsRef.current = null;
+    prevExtrasRef.current = null;
+    prevBookingsRef.current = null;
+    const zoneParams = selectedZone ? { zone: selectedZone } : {};
+
     const fetchPending = async () => {
       try {
-        const [driversData, prosData, proposalsData, bookingsData]: [any, any, any, any] = await Promise.all([
-          apiClient.get('/admin/drivers', { params: { status: 'pending' } }),
-          apiClient.get('/admin/pros', { params: { status: 'pending' } }),
-          apiClient.get('/admin/service-proposals/stats'),
-          apiClient.get('/admin/bookings/stats'),
+        // Candidatures : compteurs et notifications gérés par PendingSummaryContext
+        const [proposalsData, bookingsData]: [any, any] = await Promise.all([
+          apiClient.get('/admin/service-proposals/stats', { params: zoneParams }),
+          apiClient.get('/admin/bookings/stats', { params: zoneParams }),
         ]);
-
-        const driverList = driversData?.drivers ?? driversData ?? [];
-        const driverCount: number = Array.isArray(driverList) ? driverList.length : 0;
-        if (prevDriversRef.current !== null && driverCount > prevDriversRef.current) {
-          const diff = driverCount - prevDriversRef.current;
-          notify('CheckAllAt — Chauffeur', diff === 1 ? '1 candidature chauffeur en attente.' : `${diff} candidatures chauffeur en attente.`, 'driver-application');
-        }
-        prevDriversRef.current = driverCount;
-        setPendingDrivers(driverCount);
-
-        const proList = prosData?.pros ?? prosData ?? [];
-        const proCount: number = Array.isArray(proList) ? proList.length : 0;
-        if (prevProsRef.current !== null && proCount > prevProsRef.current) {
-          const diff = proCount - prevProsRef.current;
-          notify('CheckAllAt — Prestataire', diff === 1 ? '1 candidature prestataire en attente.' : `${diff} candidatures prestataires en attente.`, 'pro-application');
-        }
-        prevProsRef.current = proCount;
-        setPendingPros(proCount);
 
         const proposalBadge: number = proposalsData?.sidebarBadge ?? proposalsData?.pending ?? 0;
         if (prevProposalsRef.current !== null && proposalBadge > prevProposalsRef.current) {
@@ -395,11 +400,12 @@ export function Sidebar() {
         setPendingBookings(bookingCount);
 
         try {
-          const extrasData = await apiClient.get('/services/offerings/extras/pending/count') as { count: number };
+          const extrasData = await apiClient.get('/services/offerings/extras/pending/count', { params: zoneParams }) as { count: number };
           const extrasCount: number = extrasData?.count ?? 0;
-          if (extrasCount > 0) {
+          if (prevExtrasRef.current !== null && extrasCount > prevExtrasRef.current) {
             notify('CheckAllAt — Suppléments', `${extrasCount} supplément(s) en attente d'approbation.`, 'extras-pending');
           }
+          prevExtrasRef.current = extrasCount;
           setPendingExtras(extrasCount);
         } catch { /* endpoint optionnel */ }
       } catch { /* silent */ }
@@ -408,12 +414,26 @@ export function Sidebar() {
     fetchPending();
     const interval = setInterval(fetchPending, 30_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedZone]);
+
+  const apps = summary?.applications;
+  const badges: Badges = {
+    applications: apps?.total ?? 0,
+    pendingDrivers: (apps?.drivers ?? 0) + (apps?.couriers ?? 0),
+    pendingPros: apps?.pros ?? 0,
+    pendingSellers: apps?.sellers ?? 0,
+    pendingProposals,
+    pendingBookings,
+    pendingExtras,
+    openDisputes: summary?.openDisputes ?? 0,
+    // Virements à exécuter + comptes de versement à vérifier
+    transfersToExecute: (summary?.transfersToExecute ?? 0) + (summary?.unverifiedPayoutAccounts ?? 0),
+  };
 
   return (
     <>
       <div className="hidden md:flex h-screen flex-shrink-0">
-        <SidebarContent collapsed={collapsed} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} pendingBookings={pendingBookings} pendingExtras={pendingExtras} />
+        <SidebarContent collapsed={collapsed} badges={badges} />
       </div>
 
       {mobileOpen && (
@@ -421,7 +441,7 @@ export function Sidebar() {
       )}
 
       <div className={cn('fixed inset-y-0 left-0 z-50 md:hidden transition-transform duration-300', mobileOpen ? 'translate-x-0' : '-translate-x-full')}>
-        <SidebarContent collapsed={false} pendingDrivers={pendingDrivers} pendingPros={pendingPros} pendingProposals={pendingProposals} pendingBookings={pendingBookings} pendingExtras={pendingExtras} />
+        <SidebarContent collapsed={false} badges={badges} />
       </div>
     </>
   );

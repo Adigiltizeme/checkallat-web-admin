@@ -31,6 +31,8 @@ export function CommissionRatesModal({ isOpen, onClose, rates, onSave }: Commiss
       await onSave(editedRates);
       onClose();
     } catch (error) {
+      // Récapitulatif refusé : la fenêtre reste ouverte, sans message d'erreur
+      if ((error as Error)?.message === 'Modification annulée') return;
       console.error('Error saving rates:', error);
       alert('Erreur lors de la sauvegarde');
     } finally {

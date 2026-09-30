@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { apiClient } from '@/lib/api';
+import { useSettings } from '@/contexts/SettingsContext';
+import { AssignmentCountdown } from '@/components/shared/AssignmentCountdown';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -96,9 +98,9 @@ export default function BookingDetailPage() {
   const [availablePros,        setAvailablePros]        = useState<any[]>([]);
   const [prosLoading,          setProsLoading]          = useState(false);
 
-  // Countdown pour les réservations immédiates en attente (30s fenêtre d'auto-assign)
-  const BOOKING_ACCEPT_TIMEOUT_SEC = 30;
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  // Attribution en deux temps (priorité admin puis diffusion) — délais réglés dans Paramètres
+  const { settings: platformSettings } = useSettings();
+  const lifecycleBooking = (platformSettings as any)?.lifecycleSettings?.booking;
 
   const loadBooking = () =>
     apiClient
@@ -118,25 +120,6 @@ export default function BookingDetailPage() {
     const interval = setInterval(() => { loadBooking(); loadDisputes(); }, 5_000);
     return () => clearInterval(interval);
   }, [bookingId]);
-
-  // Countdown pour réservations immédiates en attente
-  useEffect(() => {
-    if (!booking || booking.status !== 'pending' || booking.bookingType !== 'immediate' || booking.assignmentType !== 'auto') {
-      setSecondsLeft(null);
-      return;
-    }
-    const elapsed = Math.floor((Date.now() - new Date(booking.createdAt).getTime()) / 1000);
-    const remaining = BOOKING_ACCEPT_TIMEOUT_SEC - elapsed;
-    setSecondsLeft(remaining > 0 ? remaining : 0);
-
-    const tick = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev === null || prev <= 1) { clearInterval(tick); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(tick);
-  }, [booking?.id, booking?.status, booking?.bookingType, booking?.assignmentType, booking?.createdAt]);
 
   const openAssignModal = async () => {
     setShowAssignModal(true);
@@ -284,40 +267,15 @@ export default function BookingDetailPage() {
         </div>
       </div>
 
-      {/* Countdown — réservations immédiates en attente uniquement */}
-      {booking.status === 'pending' && booking.bookingType === 'immediate' && booking.assignmentType === 'auto' && secondsLeft !== null && (
-        <div className={`p-4 rounded-lg border flex items-center gap-4 ${
-          secondsLeft === 0
-            ? 'bg-red-50 border-red-300'
-            : secondsLeft < 15
-            ? 'bg-orange-50 border-orange-300'
-            : 'bg-yellow-50 border-yellow-300'
-        }`}>
-          <div className={`text-4xl font-mono font-bold w-20 text-center ${
-            secondsLeft === 0 ? 'text-red-700' : secondsLeft < 15 ? 'text-orange-700' : 'text-yellow-700'
-          }`}>
-            {String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:{String(secondsLeft % 60).padStart(2, '0')}
-          </div>
-          <div className="flex-1">
-            {secondsLeft === 0 ? (
-              <>
-                <p className="font-bold text-red-800">⏰ Fenêtre d'acceptation expirée</p>
-                <p className="text-sm text-red-700">Le système a tenté une auto-assignation. Vérifiez si un pro a été assigné ou assignez-en un manuellement.</p>
-              </>
-            ) : (
-              <>
-                <p className="font-bold text-yellow-800">⚡ Réservation immédiate — en attente d'acceptation pro</p>
-                <p className="text-sm text-yellow-700">
-                  Les pros éligibles ont été notifiés. Auto-assignation dans {secondsLeft}s si aucun n'accepte.
-                  Vous pouvez également assigner manuellement ci-dessous.
-                </p>
-              </>
-            )}
-          </div>
-          <div className={`w-2 self-stretch rounded-full ${
-            secondsLeft === 0 ? 'bg-red-400' : secondsLeft < 15 ? 'bg-orange-400' : 'bg-yellow-400'
-          }`} />
-        </div>
+      {/* Compte à rebours d'attribution — même logique que le transport (immédiates et planifiées) */}
+      {booking.status === 'pending' && booking.assignmentType === 'auto' && !booking.proId && (
+        <AssignmentCountdown
+          createdAt={booking.createdAt}
+          adminWindowSec={lifecycleBooking?.adminPriorityWindowSec ?? 30}
+          acceptWindowSec={(lifecycleBooking?.proAcceptWindowMin ?? 30) * 60}
+          person="prestataire"
+          people="prestataires"
+        />
       )}
 
       {/* Actions */}

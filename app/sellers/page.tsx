@@ -38,12 +38,16 @@ export default function SellersPage() {
   }, [filters.search, filters.status, selectedZone]);
 
   const handleValidate = async (sellerId: string, approved: boolean) => {
-    if (!confirm(`Êtes-vous sûr de vouloir ${approved ? 'approuver' : 'rejeter'} ce vendeur ?`)) {
-      return;
+    let reason: string | undefined;
+    if (approved) {
+      if (!confirm('Approuver ce vendeur ?')) return;
+    } else {
+      reason = prompt('Motif du refus (communiqué au vendeur) :')?.trim();
+      if (!reason) return;
     }
 
     try {
-      await apiClient.put(`/admin/sellers/${sellerId}/validate`, { approved });
+      await apiClient.put(`/admin/sellers/${sellerId}/validate`, { approved, reason });
       alert(`Vendeur ${approved ? 'approuvé' : 'rejeté'} avec succès`);
       loadSellers();
     } catch (error: any) {
@@ -167,7 +171,7 @@ export default function SellersPage() {
                 Vendeur
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Catégorie produits
+                Domaines de vente
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Statut
@@ -191,7 +195,9 @@ export default function SellersPage() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="text-sm text-gray-900">
-                    {seller.categories?.join(', ') || 'N/A'}
+                    {seller.domains?.length
+                      ? seller.domains.map((d: { nameFr: string }) => d.nameFr).join(', ')
+                      : <span className="text-amber-700">Aucun domaine</span>}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">

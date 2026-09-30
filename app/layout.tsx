@@ -4,6 +4,8 @@ import './globals.css';
 import { AuthProvider } from '@/components/providers/AuthProvider';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ZoneProvider } from '@/contexts/ZoneContext';
+import { PendingSummaryProvider } from '@/contexts/PendingSummaryContext';
+import { LegalRevisionSync } from '@/components/settings/LegalRevisionSync';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -78,9 +80,12 @@ export default function RootLayout({
       <body className={inter.className}>
         <SettingsProvider>
           <ZoneProvider>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
+            <PendingSummaryProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+              <LegalRevisionSync />
+            </PendingSummaryProvider>
           </ZoneProvider>
         </SettingsProvider>
       </body>

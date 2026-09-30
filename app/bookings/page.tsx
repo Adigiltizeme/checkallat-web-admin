@@ -67,7 +67,7 @@ export default function BookingsPage() {
 
   const loadBookings = () => {
     apiClient
-      .get('/admin/bookings')
+      .get('/admin/bookings', { params: selectedZone ? { zone: selectedZone } : undefined })
       .then((data: any) => {
         setAllBookings(Array.isArray(data) ? data : (data.bookings ?? []));
         setLoading(false);

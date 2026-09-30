@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import Link from 'next/link';
 import { useCurrency } from '@/hooks/useCurrency';
+import { DriverScope, driverScopeOf } from '@/lib/driverScope';
+import { SectorTabs } from '@/components/shared/SectorTabs';
 import { useZone } from '@/contexts/ZoneContext';
 
 interface ActivityStats {
@@ -47,6 +49,8 @@ interface PaymentStats {
   revenueBaseCurrency?: string;
   global: GlobalStats;
   transport: ActivityStats;
+  /** CheckAllPack (livraisons deux-roues) — optionnel tant que le backend n'est pas redéployé */
+  courier?: ActivityStats;
   services: ActivityStats;
   marketplace: ActivityStats;
   servicesByCategory: CategoryStats[];
@@ -55,6 +59,7 @@ interface PaymentStats {
 
 interface DriverStat {
   driverId: string;
+  scope: DriverScope;
   driverName: string;
   totalCash: number;
   totalInApp: number;
@@ -67,7 +72,13 @@ interface DriverStat {
 
 type Tab = 'overview' | 'services_detail' | 'marketplace_detail' | 'drivers';
 
+const EMPTY_ACTIVITY: ActivityStats = {
+  total: 0, cashCount: 0, inAppCount: 0, cashRevenue: 0, inAppRevenue: 0, totalRevenue: 0,
+  disputedCount: 0, confirmedCashCount: 0, cashCommission: 0,
+};
+
 export default function PaymentStatsPage() {
+  const [driverSector, setDriverSector] = useState<DriverScope>('transport');
   const [stats, setStats] = useState<PaymentStats | null>(null);
   const [driverStats, setDriverStats] = useState<DriverStat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +121,7 @@ export default function PaymentStatsPage() {
           const rate = tot > 0 ? ti / tot * 100 : 0;
           return {
             driverId: d.id,
+            scope: driverScopeOf(d.vehicleType),
             driverName: `${d.user?.firstName || ''} ${d.user?.lastName || ''}`.trim() || 'Inconnu',
             totalCash: tc, totalInApp: ti, inAppRate: rate,
             hasSecureBadge: tot >= 10 && rate >= 90,
@@ -129,6 +141,7 @@ export default function PaymentStatsPage() {
   if (!stats)  return <div className="text-center py-12 text-red-600">Erreur de chargement</div>;
 
   const { global: g } = stats;
+  const sectorDriverStats = driverStats.filter((d) => d.scope === driverSector);
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview',           label: 'Vue d\'ensemble'            },
     { key: 'services_detail',    label: `🔧 Services par catégorie (${stats.servicesByCategory.length})`     },
@@ -183,13 +196,14 @@ export default function PaymentStatsPage() {
       </div>
 
       {/* Cards activités */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {([
           { key: 'transport' as const,   label: 'Transport',   icon: '🚚', color: 'border-purple-200', hdr: 'text-purple-700' },
+          { key: 'courier' as const,     label: 'CheckAllPack', icon: '📦', color: 'border-sky-200',   hdr: 'text-sky-700'    },
           { key: 'services' as const,    label: 'Services',    icon: '🔧', color: 'border-green-200',  hdr: 'text-green-700'  },
           { key: 'marketplace' as const, label: 'Marketplace', icon: '🛍️', color: 'border-indigo-200', hdr: 'text-indigo-700' },
         ] as { key: keyof Omit<PaymentStats,'global'|'servicesByCategory'|'marketplaceByType'>; label: string; icon: string; color: string; hdr: string }[]).map(({ key, label, icon, color, hdr }) => {
-          const s = stats[key] as ActivityStats;
+          const s = (stats[key] ?? EMPTY_ACTIVITY) as ActivityStats;
           const cashPct = s.total > 0 ? (s.cashCount / s.total * 100) : 0;
           const inAppPct = s.total > 0 ? (s.inAppCount / s.total * 100) : 0;
           return (
@@ -235,10 +249,11 @@ export default function PaymentStatsPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {([
             { key: 'transport' as const,   label: 'Transport',   icon: '🚚' },
+            { key: 'courier' as const,     label: 'CheckAllPack', icon: '📦' },
             { key: 'services' as const,    label: 'Services',    icon: '🔧' },
             { key: 'marketplace' as const, label: 'Marketplace', icon: '🛍️' },
           ] as { key: keyof Omit<PaymentStats,'global'|'servicesByCategory'|'marketplaceByType'>; label: string; icon: string }[]).map(({ key, label, icon }) => {
-            const s = stats[key] as ActivityStats;
+            const s = (stats[key] ?? EMPTY_ACTIVITY) as ActivityStats;
             return (
               <div key={key} className="bg-white rounded-lg shadow p-5">
                 <h3 className="font-semibold text-gray-700 mb-3">{icon} {label} — détail cash</h3>
@@ -255,12 +270,13 @@ export default function PaymentStatsPage() {
             <div className="space-y-2 text-sm">
               {[
                 { key: 'transport' as const,   label: '🚚 Transport'   },
+                { key: 'courier' as const,     label: '📦 CheckAllPack' },
                 { key: 'services' as const,    label: '🔧 Services'    },
                 { key: 'marketplace' as const, label: '🛍️ Marketplace' },
               ].map(({ key, label }) => (
                 <div key={key} className="flex justify-between">
                   <span className="text-gray-500">{label}</span>
-                  <span className="font-medium text-green-700">{fmtStats((stats[key] as ActivityStats).cashCommission)}</span>
+                  <span className="font-medium text-green-700">{fmtStats(((stats[key] ?? EMPTY_ACTIVITY) as ActivityStats).cashCommission)}</span>
                 </div>
               ))}
               <div className="flex justify-between pt-2 border-t font-semibold">
@@ -389,17 +405,20 @@ export default function PaymentStatsPage() {
           <div className="p-5 border-b">
             <h2 className="text-lg font-semibold">Classement par taux de paiement sécurisé</h2>
             <p className="text-sm text-gray-500 mt-0.5">Badge à partir de 10 transports avec ≥ 90% in-app</p>
+            <div className="mt-3">
+              <SectorTabs active={driverSector} onChange={setDriverSector} />
+            </div>
           </div>
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {['Rang', 'Chauffeur', 'Cash', 'In-App', 'Taux In-App', 'Badge', 'Alertes', 'Statut'].map(h => (
+                {['Rang', driverSector === 'courier' ? 'Livreur' : 'Chauffeur', 'Cash', 'In-App', 'Taux In-App', 'Badge', 'Alertes', 'Statut'].map(h => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {driverStats.map((d, i) => (
+              {sectorDriverStats.map((d, i) => (
                 <tr key={d.driverId} className="hover:bg-gray-50">
                   <td className="px-5 py-4 text-sm font-semibold text-gray-700">
                     {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
@@ -437,7 +456,7 @@ export default function PaymentStatsPage() {
                   </td>
                 </tr>
               ))}
-              {driverStats.length === 0 && (
+              {sectorDriverStats.length === 0 && (
                 <tr><td colSpan={8} className="px-6 py-12 text-center text-sm text-gray-500">Aucun chauffeur</td></tr>
               )}
             </tbody>

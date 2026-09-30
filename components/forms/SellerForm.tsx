@@ -14,33 +14,32 @@ const BUSINESS_TYPES = [
   { value: 'artisan', label: 'Artisan' },
   { value: 'individual', label: 'Individuel' },
   { value: 'small_business', label: 'Petite entreprise' },
+  { value: 'company', label: 'Société' },
 ];
 
-const CATEGORIES = [
-  'food', 'alimentation',
-  'crafts', 'artisanat',
-  'furniture', 'meubles',
-  'clothing', 'vêtements',
-  'electronics', 'électronique',
-  'home', 'maison',
-  'beauty', 'beauté',
-  'sports', 'sport',
-  'books', 'livres',
-  'toys', 'jouets',
-];
+interface Domain {
+  id: string;
+  nameFr: string;
+  parentId: string | null;
+  isActive: boolean;
+  requiresHealthCertificate: boolean;
+}
 
 export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
   const [loading, setLoading] = useState(false);
-  const [healthCertRequired, setHealthCertRequired] = useState(false);
+  const [zoneRequiresHealthCert, setZoneRequiresHealthCert] = useState(false);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [zones, setZones] = useState<Array<{ countryCode: string; country: string }>>([]);
 
   useEffect(() => {
     apiClient.get<any>('/admin/settings').then((data) => {
-      const zones: any[] = Array.isArray(data?.serviceZones)
+      const list: any[] = Array.isArray(data?.serviceZones)
         ? data.serviceZones
         : JSON.parse(data?.serviceZones || '[]');
-      const anyRequired = zones.some((z: any) => z.requireHealthCertificate && z.enabled);
-      setHealthCertRequired(anyRequired);
+      setZoneRequiresHealthCert(list.some((z: any) => z.requireHealthCertificate && z.enabled));
+      setZones(list.filter((z: any) => z.countryCode).map((z: any) => ({ countryCode: z.countryCode.toUpperCase(), country: z.country ?? z.name })));
     }).catch(() => {});
+    apiClient.get<Domain[]>('/admin/marketplace/domains').then((data) => setDomains(Array.isArray(data) ? data : [])).catch(() => {});
   }, []);
   const [formData, setFormData] = useState({
     // User info
@@ -53,19 +52,28 @@ export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
     businessName: '',
     businessType: 'artisan',
     description: '',
-    categories: [] as string[],
+    domainIds: [] as string[],
+    countryId: '',
     address: '',
     addressLat: 0,
     addressLng: 0,
     offersDelivery: false,
     deliveryRadius: 10,
+    sellerDeliveryFee: 0,
     offersPickup: true,
+    pickupInstructions: '',
+    preparationTimeMin: 20,
+    commissionRate: '' as number | '',
     hasBusinessLicense: false,
     licenseNumber: '',
     logo: '',
+    bannerUrl: '',
     healthCertificate: '',
     status: 'pending',
   });
+
+  const selectedDomains = domains.filter((d) => formData.domainIds.includes(d.id));
+  const healthCertRequired = zoneRequiresHealthCert || selectedDomains.some((d) => d.requiresHealthCertificate);
 
   useEffect(() => {
     if (seller) {
@@ -78,66 +86,89 @@ export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
         businessName: seller.businessName || '',
         businessType: seller.businessType || 'artisan',
         description: seller.description || '',
-        categories: seller.categories || [],
+        domainIds: (seller.domains ?? []).map((d: { id: string }) => d.id),
+        countryId: seller.countryId || '',
         address: seller.address || '',
         addressLat: seller.addressLat || 0,
         addressLng: seller.addressLng || 0,
         offersDelivery: seller.offersDelivery || false,
         deliveryRadius: seller.deliveryRadius || 10,
+        sellerDeliveryFee: seller.sellerDeliveryFee ?? 0,
         offersPickup: seller.offersPickup !== undefined ? seller.offersPickup : true,
+        pickupInstructions: seller.pickupInstructions || '',
+        preparationTimeMin: seller.preparationTimeMin ?? 20,
+        commissionRate: seller.commissionRate ?? '',
         hasBusinessLicense: seller.hasBusinessLicense || false,
         licenseNumber: seller.licenseNumber || '',
         logo: seller.logo || '',
+        bannerUrl: seller.bannerUrl || '',
         healthCertificate: seller.healthCertificate || '',
         status: seller.status || 'pending',
       });
     }
   }, [seller]);
 
-  const handleCategoryToggle = (category: string) => {
+  const handleDomainToggle = (domainId: string) => {
     setFormData({
       ...formData,
-      categories: formData.categories.includes(category)
-        ? formData.categories.filter((c) => c !== category)
-        : [...formData.categories, category],
+      domainIds: formData.domainIds.includes(domainId)
+        ? formData.domainIds.filter((id) => id !== domainId)
+        : [...formData.domainIds, domainId],
     });
   };
+
+  const sellerPayload = () => ({
+    businessName: formData.businessName,
+    businessType: formData.businessType,
+    description: formData.description,
+    domainIds: formData.domainIds,
+    countryId: formData.countryId || null,
+    address: formData.address,
+    addressLat: formData.addressLat,
+    addressLng: formData.addressLng,
+    offersDelivery: formData.offersDelivery,
+    deliveryRadius: formData.deliveryRadius,
+    sellerDeliveryFee: formData.offersDelivery ? formData.sellerDeliveryFee : null,
+    offersPickup: formData.offersPickup,
+    pickupInstructions: formData.pickupInstructions || null,
+    preparationTimeMin: formData.preparationTimeMin,
+    commissionRate: formData.commissionRate === '' ? null : formData.commissionRate,
+    hasBusinessLicense: formData.hasBusinessLicense,
+    licenseNumber: formData.licenseNumber,
+    logo: formData.logo || null,
+    bannerUrl: formData.bannerUrl || null,
+    healthCertificate: formData.healthCertificate || null,
+    status: formData.status,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      if (formData.domainIds.length === 0) {
+        alert('Sélectionnez au moins un domaine de vente');
+        return;
+      }
+      if (healthCertRequired && !formData.healthCertificate) {
+        alert('Le certificat sanitaire est obligatoire pour les domaines choisis');
+        return;
+      }
       if (seller) {
-        // Mode édition
-        await apiClient.patch(`/admin/sellers/${seller.id}`, {
-          businessName: formData.businessName,
-          businessType: formData.businessType,
-          description: formData.description,
-          categories: formData.categories,
-          address: formData.address,
-          addressLat: formData.addressLat,
-          addressLng: formData.addressLng,
-          offersDelivery: formData.offersDelivery,
-          deliveryRadius: formData.deliveryRadius,
-          offersPickup: formData.offersPickup,
-          hasBusinessLicense: formData.hasBusinessLicense,
-          licenseNumber: formData.licenseNumber,
-          logo: formData.logo || null,
-          healthCertificate: formData.healthCertificate || null,
-          status: formData.status,
-        });
+        await apiClient.patch(`/admin/sellers/${seller.id}`, sellerPayload());
       } else {
-        // Mode création
         if (!formData.password) {
           alert('Le mot de passe est requis');
           return;
         }
-        if (formData.categories.length === 0) {
-          alert('Veuillez sélectionner au moins une catégorie');
-          return;
-        }
-        await apiClient.post('/admin/sellers', formData);
+        await apiClient.post('/admin/sellers', {
+          ...sellerPayload(),
+          email: formData.email,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          password: formData.password,
+        });
       }
       onSuccess();
     } catch (error: any) {
@@ -308,23 +339,81 @@ export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
         </div>
       </div>
 
-      {/* Categories */}
+      {/* Domaines de vente */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Catégories de produits *
+          Domaines de vente autorisés *
         </label>
-        <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded-md p-3">
-          {CATEGORIES.map((category) => (
-            <label key={category} className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.categories.includes(category)}
-                onChange={() => handleCategoryToggle(category)}
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <span className="ml-2 text-sm text-gray-700">{category}</span>
-            </label>
-          ))}
+        {domains.length === 0 ? (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3">
+            Aucun domaine de vente n&apos;existe encore. Créez-en depuis Marketplace → Domaines de vente.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
+            {domains
+              .filter((d) => d.isActive && !d.parentId)
+              .map((domain) => (
+                <label key={domain.id} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.domainIds.includes(domain.id)}
+                    onChange={() => handleDomainToggle(domain.id)}
+                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">
+                    {domain.nameFr}
+                    {domain.requiresHealthCertificate && <span className="ml-1 text-xs text-amber-700">(certif. sanitaire)</span>}
+                  </span>
+                </label>
+              ))}
+          </div>
+        )}
+        <p className="text-xs text-gray-500 mt-1">Le vendeur pourra classer ses produits dans ces domaines et leurs sous-domaines.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Pays</label>
+          <select
+            value={formData.countryId}
+            onChange={(e) => setFormData({ ...formData, countryId: e.target.value })}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+          >
+            <option value="">—</option>
+            {zones.map((z) => (
+              <option key={z.countryCode} value={z.countryCode}>{z.country} ({z.countryCode})</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Délai de préparation (min)</label>
+          <input
+            type="number"
+            min={0}
+            value={formData.preparationTimeMin}
+            onChange={(e) => setFormData({ ...formData, preparationTimeMin: Number(e.target.value) || 0 })}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+          />
+        </div>
+        <div className="col-span-2">
+          <label className="block text-sm font-medium text-gray-700">Commission spécifique (%)</label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={0.5}
+            value={formData.commissionRate}
+            onChange={(e) => setFormData({ ...formData, commissionRate: e.target.value === '' ? '' : Number(e.target.value) })}
+            placeholder="Vide = taux du domaine, sinon taux Marketplace de la plateforme"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+          />
+        </div>
+        <div className="col-span-2">
+          <SingleFileUpload
+            label="Bannière de la boutique (optionnel)"
+            value={formData.bannerUrl}
+            onChange={(url) => setFormData({ ...formData, bannerUrl: url })}
+          />
         </div>
       </div>
 
@@ -337,18 +426,31 @@ export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
             onChange={(e) => setFormData({ ...formData, offersDelivery: e.target.checked })}
             className="rounded border-gray-300 text-primary focus:ring-primary"
           />
-          <span className="ml-2 text-sm text-gray-700">Offre la livraison</span>
+          <span className="ml-2 text-sm text-gray-700">Livre lui-même (en plus de CheckAll@t / CheckAllPack)</span>
         </label>
 
         {formData.offersDelivery && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Rayon de livraison (km)</label>
-            <input
-              type="number"
-              value={formData.deliveryRadius}
-              onChange={(e) => setFormData({ ...formData, deliveryRadius: e.target.value ? parseFloat(e.target.value) : 0 })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Rayon de livraison (km)</label>
+              <input
+                type="number"
+                value={formData.deliveryRadius}
+                onChange={(e) => setFormData({ ...formData, deliveryRadius: e.target.value ? parseFloat(e.target.value) : 0 })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Frais de livraison facturés au client</label>
+              <input
+                type="number"
+                min={0}
+                step={0.5}
+                value={formData.sellerDeliveryFee}
+                onChange={(e) => setFormData({ ...formData, sellerDeliveryFee: e.target.value ? parseFloat(e.target.value) : 0 })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+              />
+            </div>
           </div>
         )}
 
@@ -361,6 +463,19 @@ export function SellerForm({ seller, onSuccess, onCancel }: SellerFormProps) {
           />
           <span className="ml-2 text-sm text-gray-700">Retrait sur place</span>
         </label>
+
+        {formData.offersPickup && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Instructions de retrait</label>
+            <input
+              type="text"
+              value={formData.pickupInstructions}
+              onChange={(e) => setFormData({ ...formData, pickupInstructions: e.target.value })}
+              placeholder="Ex : entrée côté cour, sonner au 2e"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+            />
+          </div>
+        )}
       </div>
 
       {/* License */}

@@ -1,3 +1,6 @@
+'use client';
+
+// Next 15 : le chargement sans rendu serveur (ssr: false) doit se faire dans un composant client
 import dynamic from 'next/dynamic';
 
 const LiveMapClient = dynamic(

@@ -4,17 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { isCourierVehicle } from '@/lib/driverScope';
 import { useZone } from '@/contexts/ZoneContext';
-
-interface PayoutAccount {
-  id: string;
-  accountType: string;
-  country: string;
-  accountHolderName: string;
-  accountDetails: Record<string, string>;
-  isDefault: boolean;
-  isVerified: boolean;
-}
+import { AccountBadge, ACCOUNT_TYPE_LABELS, PayoutAccount, PAYOUT_STATUS_LABELS, money } from '@/components/payouts/shared';
+import { BalancesView } from '@/components/payouts/BalancesView';
+import { TransfersView } from '@/components/payouts/TransfersView';
 
 interface Payout {
   id: string;
@@ -23,11 +17,15 @@ interface Payout {
   commissionAmount: number;
   netAmount: number;
   status: string;
+  currency: string | null;
+  availableAt: string | null;
+  transferId: string | null;
   payoutMethod: string | null;
   driverId: string | null;
   proId: string | null;
   sellerId: string | null;
   driver?: {
+    vehicleType?: string;
     user: { firstName: string; lastName: string; phone: string };
     payoutAccounts?: PayoutAccount[];
   } | null;
@@ -47,75 +45,32 @@ interface Payout {
   createdAt: string;
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending:    { label: 'En attente', color: 'bg-yellow-100 text-yellow-800' },
-  processing: { label: 'En cours',   color: 'bg-blue-100 text-blue-800' },
-  paid:       { label: 'Versé',      color: 'bg-green-100 text-green-800' },
-  failed:     { label: 'Échoué',     color: 'bg-red-100 text-red-800' },
-};
+type PayoutSector = 'all' | 'transport' | 'courier' | 'services' | 'marketplace';
 
-const ACCOUNT_TYPE_LABELS: Record<string, string> = {
-  bank_transfer:      'Virement bancaire',
-  instapay:           'InstaPay',
-  vodafone_cash:      'Vodafone Cash',
-  orange_cash:        'Orange Cash',
-  etisalat_cash:      'E& Cash',
-  fawry:              'Fawry',
-  aman:               'Aman',
-  orange_money:       'Orange Money',
-  inwi_money:         'Inwi Money',
-  barid_cash:         'Barid Cash',
-  cih_money:          'CIH Money',
-  wafacash:           'Wafacash',
-  poste_tunisienne:   'Poste Tunisienne',
-  ooredoo_money:      'Ooredoo Money',
-  temtem:             'Temtem',
-  wave:               'Wave',
-  free_money:         'Free Money',
-  mtn_momo:           'MTN MoMo',
-  moov_money:         'Moov Money',
-  stc_pay:            'STC Pay',
-  sadad:              'SADAD',
-  etisalat_wallet:    'E& Wallet',
-};
+const PAYOUT_SECTORS: { key: PayoutSector; label: string }[] = [
+  { key: 'all', label: 'Tous' },
+  { key: 'transport', label: '🚚 Transport & Déménagement' },
+  { key: 'courier', label: '📦 CheckAllPack' },
+  { key: 'services', label: '🔧 Services' },
+  { key: 'marketplace', label: '🛍️ Marketplace' },
+];
 
-function AccountBadge({ account, onVerify, verifying }: {
-  account: PayoutAccount;
-  onVerify?: (id: string) => void;
-  verifying?: boolean;
-}) {
-  const label = ACCOUNT_TYPE_LABELS[account.accountType] ?? account.accountType;
-  const details = account.accountDetails as Record<string, string>;
-  const detail = details.ipaAddress ?? details.phoneNumber ?? details.iban ?? details.accountNumber ?? '';
-  return (
-    <div className="inline-flex flex-col gap-1">
-      <div className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${account.isVerified ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
-        <span className="font-medium">{label}</span>
-        {detail && <span className="opacity-70">{detail}</span>}
-        {account.isVerified ? (
-          <span title="Vérifié">✓</span>
-        ) : (
-          <span title="Non vérifié">⏳</span>
-        )}
-      </div>
-      {!account.isVerified && onVerify && (
-        <button
-          onClick={() => onVerify(account.id)}
-          disabled={verifying}
-          className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50 text-left"
-        >
-          {verifying ? 'Vérification…' : '✓ Marquer comme vérifié'}
-        </button>
-      )}
-    </div>
-  );
-}
+type PayoutView = 'balances' | 'transfers' | 'operations';
+
+const PAYOUT_VIEWS: { key: PayoutView; label: string; hint: string }[] = [
+  { key: 'balances', label: 'Soldes', hint: 'Gains que la plateforme garde de côté pour chaque bénéficiaire, en attente de virement' },
+  { key: 'transfers', label: 'Virements', hint: 'Virements groupés à exécuter et historique' },
+  { key: 'operations', label: 'Opérations', hint: 'Détail des gains, opération par opération' },
+];
 
 export default function PayoutsPage() {
+  const [view, setView] = useState<PayoutView>('balances');
+  const [transfersReload, setTransfersReload] = useState(0);
+  const [sector, setSector] = useState<PayoutSector>('all');
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('pending');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [processing, setProcessing] = useState(false);
   const { selectedZone } = useZone();
@@ -128,6 +83,8 @@ export default function PayoutsPage() {
     setLoading(true);
     const params: any = { page: 1, limit: 50 };
     if (statusFilter !== 'all') params.status = statusFilter;
+    if (sector !== 'all') params.sector = sector;
+    if (selectedZone) params.zone = selectedZone;
     apiClient
       .get('/payouts/admin', { params })
       .then((data: any) => {
@@ -137,9 +94,9 @@ export default function PayoutsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [statusFilter]);
+  }, [statusFilter, sector, selectedZone]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (view === 'operations') load(); }, [load, view]);
 
   const openModal = (payout: Payout) => {
     setModal({ payout });
@@ -203,20 +160,72 @@ export default function PayoutsPage() {
   };
 
   const beneficiaryType = (p: Payout) =>
-    p.driverId ? 'Chauffeur' : p.proId ? 'Pro' : p.sellerId ? 'Vendeur' : '—';
+    p.driverId
+      ? (isCourierVehicle(p.driver?.vehicleType) ? 'Livreur CheckAllPack' : 'Chauffeur')
+      : p.proId ? 'Pro' : p.sellerId ? 'Vendeur' : '—';
 
   const getAccounts = (p: Payout): PayoutAccount[] =>
     p.driver?.payoutAccounts ?? p.pro?.payoutAccounts ?? p.seller?.payoutAccounts ?? [];
 
-  const pendingTotal = payouts.filter((p) => p.status === 'pending').reduce((acc, p) => acc + p.netAmount, 0);
+  // Totaux par devise (jamais de somme entre devises différentes)
+  const pendingByCurrency = payouts
+    .filter((p) => p.status === 'pending')
+    .reduce<Record<string, number>>((acc, p) => {
+      const cur = p.currency ?? '';
+      acc[cur] = (acc[cur] ?? 0) + p.netAmount;
+      return acc;
+    }, {});
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Versements prestataires</h1>
-        <p className="text-gray-600">Règlements après déduction de la commission plateforme</p>
+        <p className="text-gray-600">Gains après commission : la plateforme les garde de côté (garantie, puis disponible) jusqu&apos;au virement</p>
       </div>
 
+      {/* Vue */}
+      <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
+        {PAYOUT_VIEWS.map((v) => (
+          <button
+            key={v.key}
+            type="button"
+            title={v.hint}
+            onClick={() => setView(v.key)}
+            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+              view === v.key ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Secteur du bénéficiaire */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex flex-wrap gap-x-6" aria-label="Secteur">
+          {PAYOUT_SECTORS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setSector(tab.key)}
+              className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
+                sector === tab.key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {view === 'balances' && (
+        <BalancesView sector={sector} zone={selectedZone} onTransferCreated={() => setTransfersReload((n) => n + 1)} />
+      )}
+      {view === 'transfers' && <TransfersView sector={sector} zone={selectedZone} reloadKey={transfersReload} />}
+
+      {view === 'operations' && (<>
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
@@ -224,8 +233,11 @@ export default function PayoutsPage() {
           <p className="text-2xl font-bold text-gray-900">{total}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-500">Montant en attente</p>
-          <p className="text-2xl font-bold text-yellow-600">{pendingTotal.toFixed(2)}</p>
+          <p className="text-sm text-gray-500">Disponible (non viré)</p>
+          {Object.keys(pendingByCurrency).length === 0 && <p className="text-2xl font-bold text-yellow-600">—</p>}
+          {Object.entries(pendingByCurrency).map(([cur, sum]) => (
+            <p key={cur} className="text-2xl font-bold text-yellow-600 tabular-nums">{money(sum, cur)}</p>
+          ))}
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-500">Sélectionnés</p>
@@ -241,10 +253,9 @@ export default function PayoutsPage() {
           className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="all">Tous les statuts</option>
-          <option value="pending">En attente</option>
-          <option value="processing">En cours</option>
-          <option value="paid">Versés</option>
-          <option value="failed">Échoués</option>
+          {Object.entries(PAYOUT_STATUS_LABELS).map(([key, cfg]) => (
+            <option key={key} value={key}>{cfg.label}</option>
+          ))}
         </select>
         {selected.size > 0 && (
           <button
@@ -252,7 +263,7 @@ export default function PayoutsPage() {
             disabled={processing}
             className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
           >
-            ✅ Marquer {selected.size} comme versé(s) (compte par défaut)
+            ✅ Marquer {selected.size} comme versé(s) individuellement (compte par défaut)
           </button>
         )}
       </div>
@@ -280,13 +291,14 @@ export default function PayoutsPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {payouts.map((payout) => {
-                const statusCfg = STATUS_LABELS[payout.status] ?? { label: payout.status, color: 'bg-gray-100 text-gray-600' };
+                const statusCfg = PAYOUT_STATUS_LABELS[payout.status] ?? { label: payout.status, color: 'bg-gray-100 text-gray-600' };
+                const payableAlone = payout.status === 'pending' && !payout.transferId;
                 const accounts = getAccounts(payout);
                 const defaultAccount = payout.payoutAccount ?? accounts.find((a) => a.isDefault) ?? accounts[0];
                 return (
                   <tr key={payout.id} className={`hover:bg-gray-50 ${selected.has(payout.id) ? 'bg-blue-50' : ''}`}>
                     <td className="px-4 py-4">
-                      {payout.status === 'pending' && (
+                      {payableAlone && (
                         <input type="checkbox" checked={selected.has(payout.id)} onChange={() => toggleSelect(payout.id)} className="rounded" />
                       )}
                     </td>
@@ -312,16 +324,21 @@ export default function PayoutsPage() {
                         <span className="text-xs text-red-500 font-medium">⚠ Aucun compte renseigné</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 font-mono">{payout.grossAmount.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900 font-mono">{money(payout.grossAmount, payout.currency)}</td>
                     <td className="px-6 py-4 text-sm text-red-600 font-mono">
-                      -{payout.commissionAmount.toFixed(2)}
+                      -{money(payout.commissionAmount)}
                       <span className="text-xs text-gray-400 ml-1">({payout.commissionRate}%)</span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-green-700 font-mono font-semibold">{payout.netAmount.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-sm text-green-700 font-mono font-semibold">{money(payout.netAmount, payout.currency)}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusCfg.color}`}>
                         {statusCfg.label}
                       </span>
+                      {payout.status === 'on_hold' && payout.availableAt && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          jusqu&apos;au {format(new Date(payout.availableAt), 'dd/MM HH:mm', { locale: fr })}
+                        </p>
+                      )}
                       {payout.processedByEmail && (
                         <p className="text-xs text-gray-400 mt-1">{payout.processedByEmail}</p>
                       )}
@@ -330,7 +347,7 @@ export default function PayoutsPage() {
                       {payout.createdAt ? format(new Date(payout.createdAt), 'dd/MM/yy HH:mm', { locale: fr }) : '—'}
                     </td>
                     <td className="px-6 py-4">
-                      {payout.status === 'pending' && (
+                      {payableAlone && (
                         <button
                           onClick={() => openModal(payout)}
                           disabled={processing}
@@ -356,6 +373,8 @@ export default function PayoutsPage() {
         </div>
       )}
 
+      </>)}
+
       {/* Modal confirmation versement */}
       {modal && (() => {
         const accounts = getAccounts(modal.payout);
@@ -365,7 +384,7 @@ export default function PayoutsPage() {
               <div>
                 <h2 className="text-lg font-bold text-gray-900">Confirmer le versement</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Bénéficiaire : <strong>{beneficiaryName(modal.payout)}</strong> — Montant net : <strong className="text-green-700">{modal.payout.netAmount.toFixed(2)}</strong>
+                  Bénéficiaire : <strong>{beneficiaryName(modal.payout)}</strong> — Montant net : <strong className="text-green-700">{money(modal.payout.netAmount, modal.payout.currency)}</strong>
                 </p>
               </div>
 

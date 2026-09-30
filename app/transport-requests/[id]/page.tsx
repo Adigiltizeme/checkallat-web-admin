@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { apiClient } from '@/lib/api';
+import { DRIVER_SCOPE_CONFIG, isCourierVehicle } from '@/lib/driverScope';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useSettings } from '@/contexts/SettingsContext';
+import { AssignmentCountdown } from '@/components/shared/AssignmentCountdown';
 
 const TransportDetailMap = dynamic(
   () => import('@/components/transport/TransportDetailMap'),
@@ -77,27 +80,9 @@ export default function TransportRequestDetailPage() {
   const [driversLoading, setDriversLoading] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
 
-  // Countdown timer for pending requests (2 min driver-accept window)
-  const DRIVER_ACCEPT_TIMEOUT_SEC = 30; // doit correspondre à DRIVER_ACCEPT_TIMEOUT_MS / 1000 côté backend
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!request || request.status !== 'pending') {
-      setSecondsLeft(null);
-      return;
-    }
-    const elapsed = Math.floor((Date.now() - new Date(request.createdAt).getTime()) / 1000);
-    const remaining = DRIVER_ACCEPT_TIMEOUT_SEC - elapsed;
-    setSecondsLeft(remaining > 0 ? remaining : 0);
-
-    const tick = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev === null || prev <= 1) { clearInterval(tick); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(tick);
-  }, [request?.id, request?.status, request?.createdAt]);
+  // Attribution en deux temps (priorité admin puis diffusion) — délais réglés dans Paramètres
+  const { settings: platformSettings } = useSettings();
+  const lifecycleTransport = (platformSettings as any)?.lifecycleSettings?.transport;
 
   useEffect(() => {
     loadRequest();
@@ -187,7 +172,10 @@ export default function TransportRequestDetailPage() {
     setDriversLoading(true);
     try {
       const data: any = await apiClient.get('/admin/drivers', { params: { status: 'active', availableOnly: 'true' } });
-      setDrivers(Array.isArray(data) ? data : (data.drivers || []));
+      const list: any[] = Array.isArray(data) ? data : (data.drivers || []);
+      // Uniquement les véhicules du bon secteur : deux-roues pour CheckAllPack, utilitaires sinon
+      const wantCourier = request?.vehicleCategory === 'courier';
+      setDrivers(list.filter((d) => isCourierVehicle(d.vehicleType) === wantCourier));
     } catch (error) {
       console.error(error);
       setDrivers([]);
@@ -243,7 +231,7 @@ export default function TransportRequestDetailPage() {
       <div className="p-8">
         <div className="bg-red-50 p-6 rounded">
           <h2 className="text-xl font-bold text-red-800">Demande introuvable</h2>
-          <button onClick={() => router.push('/transport-requests')} className="mt-4 px-4 py-2 bg-red-600 text-white rounded">
+          <button onClick={() => router.back()} className="mt-4 px-4 py-2 bg-red-600 text-white rounded">
             Retour
           </button>
         </div>
@@ -274,7 +262,10 @@ export default function TransportRequestDetailPage() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <button onClick={() => router.push('/transport-requests')} className="text-primary hover:underline mb-2">
+          <button
+            onClick={() => router.push(request.vehicleCategory === 'courier' ? DRIVER_SCOPE_CONFIG.courier.requestsHref : DRIVER_SCOPE_CONFIG.transport.requestsHref)}
+            className="text-primary hover:underline mb-2"
+          >
             ← Retour
           </button>
           <h1 className="text-3xl font-bold">Demande #{request.id.slice(0, 8)}</h1>
@@ -287,42 +278,15 @@ export default function TransportRequestDetailPage() {
         </div>
       </div>
 
-      {/* Countdown banner — pending requests only */}
-      {request.status === 'pending' && secondsLeft !== null && (
-        <div className={`p-4 rounded-lg border flex items-center gap-4 ${
-          secondsLeft === 0
-            ? 'bg-red-50 border-red-300'
-            : secondsLeft < 30
-            ? 'bg-orange-50 border-orange-300'
-            : 'bg-yellow-50 border-yellow-300'
-        }`}>
-          <div className={`text-4xl font-mono font-bold w-20 text-center ${
-            secondsLeft === 0 ? 'text-red-700' : secondsLeft < 30 ? 'text-orange-700' : 'text-yellow-700'
-          }`}>
-            {String(Math.floor((secondsLeft ?? 0) / 60)).padStart(2, '0')}:{String((secondsLeft ?? 0) % 60).padStart(2, '0')}
-          </div>
-          <div className="flex-1">
-            {secondsLeft === 0 ? (
-              <>
-                <p className="font-bold text-red-800">⏰ Fenêtre d'acceptation expirée</p>
-                <p className="text-sm text-red-700">Le système a tenté une auto-assignation. Vérifiez si un chauffeur a été assigné ou assignez-en un manuellement.</p>
-              </>
-            ) : (
-              <>
-                <p className="font-bold text-yellow-800">
-                  {request.isImmediate ? '⚡ Demande immédiate' : '📅 Demande planifiée'} — en attente d'acceptation chauffeur
-                </p>
-                <p className="text-sm text-yellow-700">
-                  Les chauffeurs éligibles ont été notifiés. Auto-assignation dans {secondsLeft}s si aucun n'accepte.
-                  Vous pouvez également assigner manuellement ci-dessous.
-                </p>
-              </>
-            )}
-          </div>
-          <div className={`w-2 self-stretch rounded-full ${
-            secondsLeft === 0 ? 'bg-red-400' : secondsLeft < 30 ? 'bg-orange-400' : 'bg-yellow-400'
-          }`} />
-        </div>
+      {/* Compte à rebours d'attribution — demandes en attente sans chauffeur */}
+      {request.status === 'pending' && !request.driverId && (
+        <AssignmentCountdown
+          createdAt={request.createdAt}
+          adminWindowSec={lifecycleTransport?.adminPriorityWindowSec ?? 30}
+          acceptWindowSec={(lifecycleTransport?.driverAcceptWindowMin ?? 2) * 60}
+          person="chauffeur"
+          people="chauffeurs"
+        />
       )}
 
       {/* Actions */}
@@ -538,9 +502,41 @@ export default function TransportRequestDetailPage() {
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">📦 Détails</h2>
+          {request.vehicleCategory === 'courier' && (
+            <div className="mb-4 p-3 rounded-lg border border-teal-200 bg-teal-50">
+              <p className="font-semibold text-teal-800">🛵 CheckAllPack — livraison 2 roues</p>
+              {(() => {
+                const opts = request.courierOptions ?? {};
+                const labels = [
+                  opts.isExpress && '⚡ Express',
+                  opts.requiresSignature && '✍️ Signature requise',
+                  opts.isFragile && '🫧 Fragile',
+                  opts.isColdChain && '🧊 Chaîne du froid',
+                ].filter(Boolean) as string[];
+                return labels.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {labels.map((label) => (
+                      <span key={label} className="px-3 py-1 bg-white text-teal-800 border border-teal-200 rounded-full text-sm font-medium">
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-teal-700 mt-1">Aucune option choisie par le client</p>
+                );
+              })()}
+              {request.courierOptions?.requiresSignature && (
+                <p className="text-sm mt-2">
+                  <strong>Signature :</strong> {request.clientSignature ? 'recueillie ✅' : 'pas encore recueillie'}
+                </p>
+              )}
+            </div>
+          )}
           <p className="mb-4">{request.itemDescription}</p>
           <p><strong>Distance:</strong> {request.distance?.toFixed(1)} km</p>
-          <p><strong>Volume:</strong> {request.estimatedVolume} m³</p>
+          {request.vehicleCategory !== 'courier' && (
+            <p><strong>Volume:</strong> {request.estimatedVolume} m³</p>
+          )}
           <p><strong>Poids estimé:</strong> {request.estimatedWeight} kg</p>
 
           {/* Types d'objets */}

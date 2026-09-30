@@ -4,20 +4,34 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
 import { SingleFileUpload, MultiFileUpload } from '@/components/FileUpload';
 import { useZone } from '@/contexts/ZoneContext';
+import { DriverScope, driverScopeOf } from '@/lib/driverScope';
 
 interface DriverFormProps {
   driver?: any;
+  /** Secteur de la liste d'origine ; à défaut, déduit du véhicule du chauffeur */
+  scope?: DriverScope;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-const VEHICLE_TYPES = [
-  { value: 'van', label: 'Camionnette' },
-  { value: 'small_truck', label: 'Petit camion' },
-  { value: 'large_truck', label: 'Grand camion' },
-];
+const VEHICLE_TYPES: Record<DriverScope, { value: string; label: string }[]> = {
+  transport: [
+    { value: 'van', label: 'Camionnette' },
+    { value: 'small_truck', label: 'Petit camion' },
+    { value: 'large_truck', label: 'Grand camion' },
+  ],
+  courier: [
+    { value: 'motorbike', label: 'Deux-roues motorisé' },
+    { value: 'bicycle', label: 'Vélo / VAE' },
+  ],
+};
 
-export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
+/** Capacité imposée pour les deux-roues (m³) — identique au backend */
+const COURIER_FIXED_CAPACITY: Record<string, number> = { motorbike: 0.08, bicycle: 0.04 };
+
+export function DriverForm({ driver, scope: scopeProp, onSuccess, onCancel }: DriverFormProps) {
+  const scope: DriverScope = scopeProp ?? driverScopeOf(driver?.vehicleType);
+  const isCourierScope = scope === 'courier';
   const { zones } = useZone();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -28,9 +42,10 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
     phone: '',
     password: '',
     // Driver info
-    vehicleType: 'van',
-    vehicleCapacity: 10,
+    vehicleType: isCourierScope ? 'motorbike' : 'van',
+    vehicleCapacity: isCourierScope ? COURIER_FIXED_CAPACITY.motorbike : 10,
     vehiclePlate: '',
+    motorbikeClass: 'motorcycle',
     hasHelpers: false,
     maxHelpers: 0,
     hasTrolleys: false,
@@ -38,6 +53,7 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
     hasBlankets: false,
     hasToolkit: false,
     hasPackingMaterial: false,
+    hasInsulatedBag: false,
     serviceRadius: 20,
     locationLat: 0,
     locationLng: 0,
@@ -50,6 +66,9 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
     countryId: '',
   });
 
+  const isBicycle = formData.vehicleType === 'bicycle';
+  const licenseRequired = !isBicycle && !(formData.vehicleType === 'motorbike' && formData.motorbikeClass === 'moped');
+
   useEffect(() => {
     if (driver) {
       setFormData({
@@ -61,6 +80,7 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
         vehicleType: driver.vehicleType || 'van',
         vehicleCapacity: driver.vehicleCapacity || 10,
         vehiclePlate: driver.vehiclePlate || '',
+        motorbikeClass: driver.motorbikeClass || 'motorcycle',
         hasHelpers: driver.hasHelpers || false,
         maxHelpers: driver.maxHelpers || 0,
         hasTrolleys: driver.hasTrolleys || false,
@@ -68,6 +88,7 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
         hasBlankets: driver.hasBlankets || false,
         hasToolkit: driver.hasToolkit || false,
         hasPackingMaterial: driver.hasPackingMaterial || false,
+        hasInsulatedBag: driver.hasInsulatedBag || false,
         serviceRadius: driver.serviceRadius || 20,
         locationLat: driver.locationLat ?? 0,
         locationLng: driver.locationLng ?? 0,
@@ -92,7 +113,8 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
         await apiClient.patch(`/admin/drivers/${driver.id}`, {
           vehicleType: formData.vehicleType,
           vehicleCapacity: formData.vehicleCapacity,
-          vehiclePlate: formData.vehiclePlate,
+          vehiclePlate: formData.vehicleType === 'bicycle' ? null : formData.vehiclePlate,
+          motorbikeClass: formData.vehicleType === 'motorbike' ? formData.motorbikeClass : null,
           hasHelpers: formData.hasHelpers,
           maxHelpers: formData.maxHelpers,
           hasTrolleys: formData.hasTrolleys,
@@ -100,6 +122,7 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
           hasBlankets: formData.hasBlankets,
           hasToolkit: formData.hasToolkit,
           hasPackingMaterial: formData.hasPackingMaterial,
+          hasInsulatedBag: formData.hasInsulatedBag,
           serviceRadius: formData.serviceRadius,
           locationLat: formData.locationLat || null,
           locationLng: formData.locationLng || null,
@@ -117,7 +140,11 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
           alert('Le mot de passe est requis');
           return;
         }
-        await apiClient.post('/admin/drivers', { ...formData, countryId: formData.countryId || undefined });
+        await apiClient.post('/admin/drivers', {
+          ...formData,
+          motorbikeClass: formData.vehicleType === 'motorbike' ? formData.motorbikeClass : undefined,
+          countryId: formData.countryId || undefined,
+        });
       }
       onSuccess();
     } catch (error: any) {
@@ -210,11 +237,18 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
           <label className="block text-sm font-medium text-gray-700">Type de véhicule</label>
           <select
             value={formData.vehicleType}
-            onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value })}
+            onChange={(e) => {
+              const vehicleType = e.target.value;
+              setFormData({
+                ...formData,
+                vehicleType,
+                ...(COURIER_FIXED_CAPACITY[vehicleType] != null && { vehicleCapacity: COURIER_FIXED_CAPACITY[vehicleType] }),
+              });
+            }}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
             required
           >
-            {VEHICLE_TYPES.map((type) => (
+            {VEHICLE_TYPES[scope].map((type) => (
               <option key={type.value} value={type.value}>
                 {type.label}
               </option>
@@ -222,17 +256,33 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Capacité (m³)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formData.vehicleCapacity}
-            onChange={(e) => setFormData({ ...formData, vehicleCapacity: e.target.value ? parseFloat(e.target.value) : 0 })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-            required
-          />
-        </div>
+        {formData.vehicleType === 'motorbike' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Catégorie du deux-roues</label>
+            <select
+              value={formData.motorbikeClass}
+              onChange={(e) => setFormData({ ...formData, motorbikeClass: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+            >
+              <option value="moped">Cyclomoteur (≤ 50 cm³ / électrique ≤ 4 kW)</option>
+              <option value="motorcycle">Moto (&gt; 50 cm³)</option>
+            </select>
+          </div>
+        )}
+
+        {!isCourierScope && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Capacité (m³)</label>
+            <input
+              type="number"
+              step="0.1"
+              value={formData.vehicleCapacity}
+              onChange={(e) => setFormData({ ...formData, vehicleCapacity: e.target.value ? parseFloat(e.target.value) : 0 })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+              required
+            />
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700">Plaque d'immatriculation</label>
@@ -240,9 +290,10 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
             type="text"
             value={formData.vehiclePlate}
             onChange={(e) => setFormData({ ...formData, vehiclePlate: e.target.value })}
-            placeholder="ABC-123-45"
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-            required
+            placeholder={formData.vehicleType === 'bicycle' ? 'Sans objet pour un vélo' : 'ABC-123-45'}
+            disabled={formData.vehicleType === 'bicycle'}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary disabled:bg-gray-100"
+            required={formData.vehicleType !== 'bicycle'}
           />
         </div>
 
@@ -283,6 +334,8 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
         Latitude/Longitude optionnelles — le chauffeur les met à jour en temps réel depuis l'app.
       </p>
 
+      {!isCourierScope && (
+        <>
       {/* Helpers */}
       <div className="space-y-2">
         <label className="flex items-center">
@@ -361,8 +414,23 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
             />
             <span className="ml-2 text-sm text-gray-700">Matériel d'emballage</span>
           </label>
+
         </div>
       </div>
+        </>
+      )}
+
+      {isCourierScope && (
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            checked={formData.hasInsulatedBag}
+            onChange={(e) => setFormData({ ...formData, hasInsulatedBag: e.target.checked })}
+            className="rounded border-gray-300 text-primary focus:ring-primary"
+          />
+          <span className="ml-2 text-sm text-gray-700">Sac isotherme (livraisons chaîne du froid)</span>
+        </label>
+      )}
 
       {/* Documents & Photos */}
       <div className="space-y-4">
@@ -377,14 +445,16 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
         />
 
         <div className="grid grid-cols-2 gap-4">
+          {!isBicycle && (
+            <SingleFileUpload
+              label={licenseRequired ? 'Permis de conduire' : 'Permis de conduire (facultatif selon le pays)'}
+              value={formData.drivingLicense}
+              onChange={(url) => setFormData({ ...formData, drivingLicense: url })}
+              required={licenseRequired}
+            />
+          )}
           <SingleFileUpload
-            label="Permis de conduire"
-            value={formData.drivingLicense}
-            onChange={(url) => setFormData({ ...formData, drivingLicense: url })}
-            required
-          />
-          <SingleFileUpload
-            label="Document d'immatriculation du véhicule"
+            label={isBicycle ? 'Justificatif du vélo (facture / assurance)' : "Document d'immatriculation du véhicule"}
             value={formData.vehicleInsurance}
             onChange={(url) => setFormData({ ...formData, vehicleInsurance: url })}
             required

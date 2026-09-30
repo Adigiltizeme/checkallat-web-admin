@@ -2,10 +2,16 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = ['/login'];
-const PUBLIC_PREFIXES = ['/track', '/privacy', '/terms'];
+const PUBLIC_PREFIXES = ['/track', '/privacy', '/terms', '/account-deletion'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Chrome DevTools interroge ce fichier (espaces de travail automatiques) à chaque ouverture des outils :
+  // aucune configuration à fournir, on répond « rien à signaler » au lieu d'une 404 dans les journaux.
+  if (pathname === '/.well-known/appspecific/com.chrome.devtools.json') {
+    return new NextResponse(null, { status: 204 });
+  }
 
   // Laisser passer les assets statiques (public/) et les routes publiques
   if (

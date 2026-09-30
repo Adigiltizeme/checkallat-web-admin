@@ -1,3 +1,5 @@
+import { legalRevisionLabel } from '@/lib/legal-documents';
+
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -12,7 +14,7 @@ export default function TermsPage() {
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Conditions Générales d'Utilisation</h1>
-        <p className="text-sm text-gray-500 mb-8">Dernière mise à jour : septembre 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Dernière mise à jour : {legalRevisionLabel()}</p>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-8 text-gray-700 text-sm leading-relaxed">
 
@@ -23,6 +25,7 @@ export default function TermsPage() {
             </p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li><strong>Transport et déménagement de marchandises :</strong> mise en relation avec des chauffeurs et transporteurs professionnels disposant de véhicules adaptés (fourgonnette, camionnette, grand camion). <em>CheckAll@t ne propose aucun service de transport de personnes (VTC).</em></li>
+              <li><strong>CheckAllPack — Livraison express 2 roues :</strong> mise en relation avec des livreurs professionnels à moto ou à vélo pour l'envoi de colis légers, courriers et petits objets. Le poids et la distance maximum sont fixés par la plateforme et affichés avant la commande ; une demande qui les dépasse doit passer par le service Transport &amp; Déménagement. Le client peut choisir des options (livraison express, signature du destinataire, colis fragile, chaîne du froid) ; l'option express entraîne un supplément dont le montant est affiché dans le détail du prix avant validation. Les livraisons « chaîne du froid » ne sont proposées qu'aux livreurs ayant déclaré un sac isotherme ; le livreur est responsable de l'exactitude de cette déclaration. Ce service est soumis aux mêmes conditions que le transport de marchandises en ce qui concerne la vérification d'identité des livreurs et la responsabilité des parties.</li>
               <li><strong>Services à domicile et de proximité :</strong> plomberie, électricité, menuiserie, peinture, nettoyage, réparation, assistance et autres métiers similaires, proposés par des prestataires professionnels vérifiés.</li>
               <li><strong>Marketplace :</strong> achat et vente de produits proposés par des vendeurs ou partenaires vérifiés.</li>
             </ul>
@@ -34,18 +37,26 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">2. Inscription et compte utilisateur</h2>
             <p className="mb-2">
-              L'utilisation de CheckAll@t nécessite la création d'un compte. Tout compte nouvellement créé est de type <strong>client</strong> par défaut. L'accès aux fonctionnalités de prestataire (chauffeur ou Pro) ou de vendeur Marketplace nécessite une candidature distincte soumise à validation.
+              L'utilisation de CheckAll@t nécessite la création d'un compte. Tout compte nouvellement créé est de type <strong>client</strong> par défaut. L'accès aux fonctionnalités de prestataire (chauffeur Transport, livreur CheckAllPack ou Pro Services) ou de vendeur Marketplace nécessite une candidature distincte soumise à validation.
             </p>
             <p className="mb-2">En vous inscrivant, vous déclarez :</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Avoir au moins 18 ans.</li>
               <li>Fournir des informations exactes, complètes et à jour.</li>
               <li>Ne pas créer de faux compte ni usurper l'identité d'un tiers.</li>
-              <li>Être responsable de la confidentialité de vos identifiants de connexion.</li>
+              <li>Être responsable de la confidentialité de vos identifiants de connexion. En cas d'oubli, le mot de passe peut être réinitialisé avec un code envoyé par SMS au numéro du compte ; toutes les sessions ouvertes sont alors déconnectées.</li>
+              <li>Confirmer votre numéro de téléphone avec le code reçu par SMS : le compte n'est utilisable qu'après cette confirmation. Tout changement de numéro exige un code reçu sur le nouveau numéro.</li>
+              <li>Confirmer votre adresse e-mail avec le code reçu par e-mail. Cette confirmation est recommandée pour tous ; elle est obligatoire pour déposer une candidature de chauffeur, livreur, prestataire ou vendeur dans les pays où CheckAll@t l'exige (l'application l'indique au moment de la candidature). Une nouvelle adresse doit être confirmée à nouveau.</li>
               <li>Informer CheckAll@t de toute modification importante de vos informations personnelles ou professionnelles.</li>
             </ul>
             <p className="mt-2">
               CheckAll@t se réserve le droit de suspendre, limiter ou supprimer tout compte en cas de non-respect des présentes conditions, de fraude, d'abus, ou de comportement susceptible de nuire à la plateforme ou à d'autres utilisateurs.
+            </p>
+            <p className="mt-2">
+              Avec votre accord, demandé une fois dans l'application, CheckAll@t mesure l'usage de l'application (écrans consultés, étapes clés) pour l'améliorer ; ce choix est facultatif, sans effet sur l'accès aux services, et modifiable à tout moment dans Profil → Mesure d'usage (voir la Politique de confidentialité).
+            </p>
+            <p className="mt-2">
+              Vous pouvez supprimer votre compte à tout moment depuis l'application (Profil → Supprimer mon compte), à condition de n'avoir aucune commande ou prestation en cours, aucun versement en attente et aucun solde impayé envers la plateforme. La suppression est définitive ; les activités de prestataire (chauffeur, livreur, pro, vendeur) rattachées au compte sont clôturées en même temps.
             </p>
           </section>
 
@@ -60,6 +71,13 @@ export default function TermsPage() {
               <li>Maintenir leurs informations à jour (tarifs, disponibilités, zones d'intervention, stocks).</li>
               <li>Respecter les engagements pris envers les utilisateurs.</li>
               <li>Informer sans délai CheckAll@t de tout événement pouvant affecter leur capacité à fournir le service ou le produit annoncé.</li>
+            </ul>
+            <p className="mt-3 mb-2"><strong>Véhicule des chauffeurs et livreurs.</strong></p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Le chauffeur ou livreur s'engage, lors de sa candidature, à effectuer ses courses <strong>uniquement avec le véhicule déclaré et validé</strong>. L'utilisation d'un autre véhicule entraîne la suspension du compte.</li>
+              <li>Tout véhicule motorisé, deux-roues compris, doit être immatriculé et assuré. Le permis de conduire est exigé, sauf pour un cyclomoteur (≤ 50 cm³ ou électrique ≤ 4 kW) dans les pays où la réglementation ne l'impose pas. Les vélos à assistance électrique dépassant 25 km/h (speed bikes) et les scooters électriques sont des véhicules motorisés.</li>
+              <li>Le livreur à vélo fournit une photo de lui avec son vélo et un justificatif du vélo. Pendant les courses, sa vitesse moyenne est contrôlée : une vitesse incompatible avec un vélo déclenche un avertissement puis une vérification de son compte par l'équipe CheckAll@t.</li>
+              <li>Tout changement de véhicule (type, catégorie ou immatriculation) doit être déclaré dans l'application avec les pièces correspondantes. Le compte ne reçoit plus de courses jusqu'à la validation du nouveau véhicule.</li>
             </ul>
           </section>
 
@@ -133,6 +151,12 @@ export default function TermsPage() {
             <p className="mt-2">
               Les reversements aux prestataires sont effectués selon les moyens de payout disponibles dans le pays concerné (virement bancaire, IBAN/SWIFT, wallets mobiles selon le pays). CheckAll@t peut adapter ses procédures de reversement en fonction des contraintes techniques, réglementaires ou bancaires locales.
             </p>
+            <p className="mt-2">
+              <strong>Garantie, solde et calendrier des reversements.</strong> Le montant net revenant au chauffeur, au livreur, au prestataire ou au vendeur (après commission) est enregistré sur son solde une fois la prestation confirmée, par le client ou automatiquement. Il reste d'abord <em>en garantie</em> pendant une durée fixée par la plateforme et indiquée dans l'application, durant laquelle le client peut encore ouvrir un litige ; il devient ensuite <em>disponible</em> et reste conservé par CheckAll@t sur le solde du bénéficiaire jusqu'au reversement. Un litige ouvert sur une opération suspend le reversement du montant correspondant jusqu'à sa résolution ; si le client est remboursé, ce montant est retiré du solde. Les reversements sont effectués, selon les règles en vigueur, à l'initiative de CheckAll@t ou automatiquement selon une périodicité (quotidienne, hebdomadaire, bimensuelle ou mensuelle), éventuellement à partir d'un montant minimal par pays, sur le compte de versement renseigné par le bénéficiaire.
+            </p>
+            <p className="mt-2">
+              <strong>Compensation des commissions sur paiements en espèces.</strong> Le prestataire accepte que la commission due à CheckAll@t sur les prestations payées en espèces soit déduite de ses reversements ; le détail de chaque compensation figure sur le reversement concerné. Si un reversement échoue, la commission compensée redevient due. Tant que la commission due dépasse le seuil fixé pour son pays, l'acceptation de paiements en espèces peut être suspendue.
+            </p>
           </section>
 
           <section>
@@ -174,9 +198,13 @@ export default function TermsPage() {
               Des frais d'annulation peuvent s'appliquer dans les cas suivants :
             </p>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Transport (annulation tardive)</strong> : des frais équivalant à <strong>20 % du montant de la course</strong> peuvent être facturés si le client annule alors que le chauffeur est déjà en route ou déjà arrivé à l'adresse de prise en charge, sans motif légitime.</li>
-              <li><strong>Services et réservations</strong> : les conditions d'annulation peuvent varier selon les modalités convenues lors de la réservation (date limite d'annulation sans frais communiquée avant confirmation).</li>
+              <li><strong>Annulation gratuite</strong> : le client est intégralement remboursé s'il annule avant le délai précédant le créneau indiqué dans l'application ; passé ce délai, aucun remboursement n'est dû.</li>
+              <li><strong>Annulation tardive (transport et services)</strong> : si le client annule sans motif légitime alors que le chauffeur ou le prestataire est déjà arrivé, ou en route depuis plus que le délai indiqué dans l'application, des frais correspondant à un pourcentage du montant (affiché dans l'application avant confirmation) sont appliqués. En cas de paiement dans l'application, ces frais sont retenus sur le paiement et le reste est restitué immédiatement ; en cas de paiement en espèces, ils sont réglés avant la commande suivante.</li>
+              <li><strong>Annulation par le chauffeur, le prestataire ou la plateforme</strong> : le client est intégralement remboursé.</li>
             </ul>
+            <p className="mt-2">
+              Les délais et le taux des frais sont fixés par CheckAll@t et affichés dans l'application au moment de l'annulation.
+            </p>
             <p className="mt-2">
               En cas de remboursement par carte bancaire, le délai de traitement dépend de l'établissement bancaire ou du moyen de paiement utilisé.
             </p>
@@ -186,6 +214,9 @@ export default function TermsPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-3">4 quater. Signature électronique et documentation des prestations</h2>
             <p className="mb-2">
               À l'issue d'une prestation de transport, le client peut être invité à apposer une <strong>signature électronique</strong> dans l'application pour confirmer la bonne réception des biens. Cette signature constitue un élément de preuve pouvant être utilisé en cas de litige.
+            </p>
+            <p className="mb-2">
+              Pour une livraison CheckAllPack avec l'option <strong>« Signature requise »</strong>, le livreur ne peut clôturer la livraison qu'après avoir recueilli la signature du destinataire sur son téléphone. Le client qui choisit cette option s'engage à informer le destinataire que sa signature sera recueillie et conservée à titre de preuve de remise.
             </p>
             <p>
               Des photos de l'état des biens ou des lieux peuvent être prises avant et après la prestation ou la livraison, par le prestataire ou le client. Ces photos sont conservées à des fins de traçabilité et de résolution de litiges éventuels.
@@ -203,6 +234,8 @@ export default function TermsPage() {
               <li>Certains services permettent un mode <strong>auto-assign</strong> : la demande est publiée et des prestataires disponibles peuvent soumettre une offre. Le client choisit parmi les offres reçues.</li>
               <li>Les annulations tardives peuvent entraîner des frais (voir section 4 ter).</li>
               <li>Les remboursements, lorsqu'ils sont applicables, sont traités selon les modalités indiquées avant la confirmation de la commande.</li>
+              <li><strong>Annulations automatiques</strong> : une demande qui n'a trouvé aucun chauffeur ou prestataire dans le délai prévu après le créneau, ou dont le prestataire ne s'est pas présenté, est annulée automatiquement et le client intégralement remboursé.</li>
+              <li><strong>Clôture automatique</strong> : lorsque le chauffeur ou le prestataire déclare la prestation terminée, le client en est immédiatement informé par notification, avec la date limite pour confirmer ou signaler un problème ; un rappel lui est adressé avant cette date, et la clôture n'intervient jamais moins d'une heure après ce rappel. Sans confirmation ni contestation dans ce délai, la prestation est réputée acceptée et le paiement est versé au chauffeur ou au prestataire. Un litige ouvert avant l'échéance suspend la clôture automatique jusqu'à sa résolution.</li>
             </ul>
           </section>
 
@@ -245,6 +278,22 @@ export default function TermsPage() {
               <li>Respecter les obligations légales applicables à leur activité (licences commerciales, certificats sanitaires si requis, réglementation locale).</li>
               <li>Honorer les commandes confirmées dans les délais annoncés.</li>
               <li>Informer CheckAll@t de tout changement affectant leur capacité à satisfaire les commandes.</li>
+              <li>Accepter ou refuser chaque nouvelle commande dans le délai fixé par la plateforme ; à défaut, la commande est automatiquement annulée et le client intégralement remboursé.</li>
+              <li>Ne vendre que des produits relevant des domaines de vente qui leur ont été attribués par CheckAll@t.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">7 bis-1. Fonctionnement des commandes Marketplace</h2>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><strong>Une boutique par commande :</strong> un panier ne peut contenir que les produits d'un seul vendeur.</li>
+              <li><strong>Paiement :</strong> le paiement s'effectue exclusivement dans l'application. Le montant est d'abord autorisé, puis débité lorsque le vendeur accepte la commande. En cas de refus, d'expiration ou d'annulation avant préparation, l'autorisation est levée ou le montant intégralement remboursé.</li>
+              <li><strong>Modes de livraison :</strong> selon la boutique et la commande, le client peut choisir la livraison par un coursier deux-roues CheckAllPack, la livraison par un véhicule CheckAll@t lorsque la commande dépasse les limites du coursier, la livraison assurée par le vendeur ou le retrait en boutique. Les frais correspondants sont affichés avant paiement.</li>
+              <li><strong>Codes de remise :</strong> pour le retrait en boutique et la livraison par le vendeur, un code est remis au client ; sa communication au vendeur vaut confirmation de la remise de la commande.</li>
+              <li><strong>Réception :</strong> dès la livraison, le client est informé par notification de la date limite pour confirmer la réception ou signaler un problème ; un rappel lui est adressé avant cette date, au moins une heure avant la clôture. À défaut de confirmation ou de réclamation, la commande est réputée reçue et le paiement reversé au vendeur.</li>
+              <li><strong>Réclamations :</strong> le client peut signaler un problème (article endommagé, manquant, non conforme, livraison) depuis la commande pendant le délai de réclamation affiché dans l'application, y compris après la clôture. Une réclamation ouverte suspend la clôture et le versement au vendeur jusqu'à son examen par le support.</li>
+              <li><strong>Commission :</strong> la commission CheckAll@t est déduite du montant reversé au vendeur ; elle est fixée par la plateforme (par vendeur, par domaine de vente ou par défaut) et affichée au vendeur sur chaque commande. Le prix payé par le client n'inclut aucune commission supplémentaire.</li>
+              <li><strong>Livreurs :</strong> la rémunération du livreur CheckAll@t correspond aux frais de livraison, déduction faite de la commission transport applicable.</li>
             </ul>
           </section>
 
@@ -300,7 +349,10 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">12. Modifications des CGU</h2>
             <p>
-              Digiltizème se réserve le droit de modifier les présentes CGU à tout moment. La date de mise à jour est indiquée en haut de ce document. Les versions mises à jour entrent en vigueur à la date indiquée. La poursuite de l'utilisation de la plateforme après publication des nouvelles conditions vaut acceptation de celles-ci.
+              L'acceptation des présentes CGU et de la Politique de confidentialité est obligatoire lors de la création d'un compte ; la date et la version acceptées sont enregistrées.
+            </p>
+            <p className="mt-2">
+              Digiltizème se réserve le droit de modifier les présentes CGU. La date de mise à jour est indiquée en haut de ce document. Les corrections mineures entrent en vigueur à leur publication. En cas de modification importante (nouvelles obligations, nouveaux frais, nouvelles données collectées), une nouvelle version est publiée et présentée dans l'application : l'utilisateur doit l'accepter pour continuer à utiliser la plateforme. À défaut, il est déconnecté et peut supprimer son compte à tout moment depuis l'application.
             </p>
           </section>
 

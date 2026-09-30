@@ -391,6 +391,9 @@ export default function ClientDetailPage() {
                     ['Couvertures',        client.driver.hasBlankets],
                     ['Boîte à outils',     client.driver.hasToolkit],
                     ['Matériel emballage', client.driver.hasPackingMaterial],
+                    ...(['motorbike', 'bicycle'].includes(client.driver.vehicleType)
+                      ? [['Sac isotherme', client.driver.hasInsulatedBag]]
+                      : []),
                   ].map(([label, val]) => (
                     <Row key={label as string} label={label as string} value={val ? '✅' : '—'} />
                   ))}

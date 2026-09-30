@@ -74,14 +74,15 @@ export default function CashCommissionsPage() {
   const transportCommissionRate = settings?.commissionRates?.['moving_transport']?.standard ?? 10;
 
   const load = useCallback(() => {
+    const params = selectedZone ? { zone: selectedZone } : undefined;
     Promise.all([
-      apiClient.get('/admin/drivers/cash-commissions'),
-      apiClient.get('/admin/pros/cash-commissions'),
+      apiClient.get('/admin/drivers/cash-commissions', { params }),
+      apiClient.get('/admin/pros/cash-commissions', { params }),
     ])
       .then(([drivers, pros]: any[]) => { setData(drivers); setProsData(pros); })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedZone]);
 
   useEffect(() => {
     load();

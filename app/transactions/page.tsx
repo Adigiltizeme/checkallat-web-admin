@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSettings } from '@/contexts/SettingsContext';
+import { driverScopeOf } from '@/lib/driverScope';
 import { useZone } from '@/contexts/ZoneContext';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -53,6 +54,7 @@ interface DriverCommission {
   id: string;
   pendingCashCommission: number;
   totalCashCommissionPaid: number;
+  vehicleType?: string;
   vehiclePlate: string;
   isCashRestricted: boolean;
   user: { id: string; firstName: string; lastName: string; phone: string };
@@ -90,6 +92,7 @@ interface ProCommissionData { pros: ProCommission[]; totalPending: number; }
 
 const TYPE_CONFIG: Record<string, { label: string; className: string; icon: string }> = {
   transport: { label: 'Transport',   className: 'bg-purple-100 text-purple-800', icon: '🚚' },
+  courier:   { label: 'CheckAllPack', className: 'bg-sky-100 text-sky-800',      icon: '📦' },
   booking:   { label: 'Réservation', className: 'bg-green-100 text-green-800',   icon: '🔧' },
   order:     { label: 'Commande',    className: 'bg-indigo-100 text-indigo-800',  icon: '🛍️' },
 };
@@ -100,7 +103,7 @@ const METHOD_LABELS: Record<string, string> = {
 
 const toDay = (d: string) => d ? new Date(d).toLocaleDateString('en-CA') : '';
 type MainTab = 'transactions' | 'commissions';
-type CommTab = 'drivers' | 'pros';
+type CommTab = 'drivers' | 'couriers' | 'pros';
 type CommStatus = 'all' | 'restricted' | 'unrestricted';
 type OpFilter = 'all' | 'pending' | 'collected';
 
@@ -121,7 +124,7 @@ export default function TransactionsPage() {
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null, mode: 'range', singleDate: null });
 
   // commissions state
-  const [driverData, setDriverData] = useState<DriverCommissionData | null>(null);
+  const [rawDriverData, setDriverData] = useState<DriverCommissionData | null>(null);
   const [loadingDrivers, setLoadingDrivers] = useState(false);
   const [collectingDriverId, setCollectingDriverId] = useState<string | null>(null);
   const [expandedDriverId, setExpandedDriverId] = useState<string | null>(null);
@@ -196,25 +199,39 @@ export default function TransactionsPage() {
 
   const loadDriverCommissions = useCallback((showAll = false) => {
     setLoadingDrivers(true);
-    apiClient.get('/admin/drivers/cash-commissions', { params: showAll ? { showAll: 'true' } : undefined })
+    apiClient.get('/admin/drivers/cash-commissions', {
+      params: { ...(showAll ? { showAll: 'true' } : {}), ...(selectedZone ? { zone: selectedZone } : {}) },
+    })
       .then((d: any) => setDriverData(d))
       .catch(console.error)
       .finally(() => setLoadingDrivers(false));
-  }, []);
+  }, [selectedZone]);
 
   const loadProCommissions = useCallback((showAll = false) => {
     setLoadingPros(true);
-    apiClient.get('/admin/pros/cash-commissions', { params: showAll ? { showAll: 'true' } : undefined })
+    apiClient.get('/admin/pros/cash-commissions', {
+      params: { ...(showAll ? { showAll: 'true' } : {}), ...(selectedZone ? { zone: selectedZone } : {}) },
+    })
       .then((d: any) => setProData(d))
       .catch(console.error)
       .finally(() => setLoadingPros(false));
-  }, []);
+  }, [selectedZone]);
 
   useEffect(() => {
     if (mainTab !== 'commissions') return;
-    if (commTab === 'drivers') loadDriverCommissions(driverShowAll);
+    if (commTab === 'drivers' || commTab === 'couriers') loadDriverCommissions(driverShowAll);
     else loadProCommissions(proShowAll);
   }, [mainTab, commTab, driverShowAll, proShowAll, loadDriverCommissions, loadProCommissions]);
+
+  // Commissions cash : chauffeurs Transport et livreurs CheckAllPack affichés séparément
+  const scopeDriverData = (scope: 'transport' | 'courier'): DriverCommissionData | null => {
+    if (!rawDriverData) return null;
+    const drivers = rawDriverData.drivers.filter((d) => driverScopeOf(d.vehicleType) === scope);
+    return { drivers, totalPending: drivers.reduce((sum, d) => sum + (d.pendingCashCommission || 0), 0) };
+  };
+  const transportDriverData = scopeDriverData('transport');
+  const courierDriverData = scopeDriverData('courier');
+  const driverData = commTab === 'couriers' ? courierDriverData : transportDriverData;
 
   // ── Filters ────────────────────────────────────────────────────────────────
   const todayStr = new Date().toLocaleDateString('en-CA');
@@ -377,7 +394,7 @@ export default function TransactionsPage() {
   const proCommCurrency: string | undefined =
     (proData?.pros ?? []).flatMap(p => p.bookings).find(b => b.currency)?.currency ?? undefined;
 
-  const totalCommPending = (driverData?.totalPending ?? 0) + (proData?.totalPending ?? 0);
+  const totalCommPending = (rawDriverData?.totalPending ?? 0) + (proData?.totalPending ?? 0);
 
   return (
     <div className="space-y-6">
@@ -419,7 +436,7 @@ export default function TransactionsPage() {
             </div>
             <div className="bg-white rounded-lg shadow p-5">
               <p className="text-sm text-gray-500 mb-1">Répartition</p>
-              {(['transport', 'booking', 'order'] as const).map(t => {
+              {(['transport', 'courier', 'booking', 'order'] as const).map(t => {
                 const cfg = TYPE_CONFIG[t];
                 const s = statsByType[t];
                 if (!s) return null;
@@ -486,6 +503,7 @@ export default function TransactionsPage() {
                 className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value="all">Tous types</option>
                 <option value="transport">🚚 Transport</option>
+                <option value="courier">📦 CheckAllPack</option>
                 <option value="booking">🔧 Réservation service</option>
                 <option value="order">🛍️ Commande marketplace</option>
               </select>
@@ -569,7 +587,8 @@ export default function TransactionsPage() {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-6">
               {([
-                { key: 'drivers', label: `🚚 Chauffeurs${driverData?.totalPending ? ` · ${formatCurrency(driverData.totalPending, driverCommCurrency)}` : ''}` },
+                { key: 'drivers',  label: `🚚 Chauffeurs${transportDriverData?.totalPending ? ` · ${formatCurrency(transportDriverData.totalPending, driverCommCurrency)}` : ''}` },
+                { key: 'couriers', label: `📦 Livreurs CheckAllPack${courierDriverData?.totalPending ? ` · ${formatCurrency(courierDriverData.totalPending, driverCommCurrency)}` : ''}` },
                 { key: 'pros',    label: `🔧 Prestataires services${proData?.totalPending ? ` · ${formatCurrency(proData.totalPending, proCommCurrency)}` : ''}` },
               ] as { key: CommTab; label: string }[]).map(({ key, label }) => (
                 <button key={key} onClick={() => setCommTab(key)}
@@ -581,7 +600,7 @@ export default function TransactionsPage() {
           </div>
 
           {/* ── Chauffeurs ── */}
-          {commTab === 'drivers' && (
+          {(commTab === 'drivers' || commTab === 'couriers') && (
             <>
               {loadingDrivers ? <div className="text-center py-12">Chargement...</div> : (
                 <>
@@ -593,7 +612,7 @@ export default function TransactionsPage() {
                           ? formatCurrency(driverData?.totalPending ?? 0, driverCommCurrency)
                           : (driverData?.totalPending ?? 0) === 0 ? '0' : fmtTotal(driverData?.totalPending ?? 0)}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5">{driverData?.drivers.length ?? 0} chauffeur(s)</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{driverData?.drivers.length ?? 0} {commTab === 'couriers' ? 'livreur(s)' : 'chauffeur(s)'}</p>
                     </div>
                     <div className="bg-white rounded-lg shadow p-5">
                       <p className="text-sm text-gray-500">Taux transport</p>

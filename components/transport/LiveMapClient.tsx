@@ -45,6 +45,7 @@ interface TransportRequest {
   createdAt: string;
   driverId: string | null;
   paymentMethod?: string;
+  vehicleCategory?: string | null;
   client: {
     firstName: string;
     lastName: string;
@@ -126,6 +127,8 @@ const VEHICLE_LABELS: Record<string, string> = {
   van: 'Fourgon',
   small_truck: 'Petit camion',
   large_truck: 'Grand camion',
+  motorbike: 'Deux-roues (CheckAllPack)',
+  bicycle: 'Vélo (CheckAllPack)',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -190,7 +193,12 @@ export default function LiveMapClient() {
   const fetchRef = useRef<((silent?: boolean) => void) | null>(null);
 
   const [sector, setSector]           = useState<Sector>('transport');
-  const [requests, setRequests]       = useState<TransportRequest[]>([]);
+  const [fetchedRequests, setRequests] = useState<TransportRequest[]>([]);
+  // Sous-filtre du secteur « livraisons » : Transport & Déménagement / CheckAllPack
+  const [requestScope, setRequestScope] = useState<'all' | 'standard' | 'courier'>('all');
+  const requests = requestScope === 'all'
+    ? fetchedRequests
+    : fetchedRequests.filter(r => (r.vehicleCategory ?? 'standard') === requestScope);
   const [tracking, setTracking]       = useState<Record<string, TrackingInfo>>({});
   const [bookings, setBookings]       = useState<Booking[]>([]);
   const [selected, setSelected]       = useState<SelectedMarker | null>(null);
@@ -211,7 +219,9 @@ export default function LiveMapClient() {
       if (!silent) setRefreshing(true);
       try {
         if (sector === 'transport') {
-          const all = await apiClient.get<TransportRequest[]>('/admin/transport-requests');
+          const all = await apiClient.get<TransportRequest[]>('/admin/transport-requests', {
+            params: selectedZone ? { zone: selectedZone } : undefined,
+          });
           const active = all.filter(r => ACTIVE_STATUSES.includes(r.status));
           if (!cancelled) setRequests(active);
 
@@ -229,7 +239,9 @@ export default function LiveMapClient() {
           }
           if (!cancelled) setTracking(trackMap);
         } else {
-          const data = await apiClient.get<any>('/admin/bookings');
+          const data = await apiClient.get<any>('/admin/bookings', {
+            params: selectedZone ? { zone: selectedZone } : undefined,
+          });
           const list: Booking[] = Array.isArray(data) ? data : (data.bookings ?? []);
           if (!cancelled) setBookings(list.filter(b => ACTIVE_BOOKING_STATUSES.includes(b.status)));
         }
@@ -379,6 +391,34 @@ export default function LiveMapClient() {
             ))}
           </div>
         </div>
+
+        {/* Sous-secteur des livraisons */}
+        {sector === 'transport' && (
+          <div className="p-3 border-b border-gray-100 flex-shrink-0">
+            <div className="flex rounded-lg bg-gray-100 p-0.5 text-xs font-medium">
+              {([
+                { key: 'all', label: 'Tous' },
+                { key: 'standard', label: '🚚 Transport' },
+                { key: 'courier', label: '📦 CheckAllPack' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => setRequestScope(opt.key)}
+                  className={`flex-1 rounded-md px-2 py-1.5 transition-colors ${
+                    requestScope === opt.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {opt.label}
+                  <span className="ml-1 text-gray-400">
+                    ({opt.key === 'all'
+                      ? fetchedRequests.length
+                      : fetchedRequests.filter(r => (r.vehicleCategory ?? 'standard') === opt.key).length})
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Status Filters */}
         <div className="p-3 border-b border-gray-100 flex-shrink-0">
