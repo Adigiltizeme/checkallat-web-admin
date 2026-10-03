@@ -24,6 +24,7 @@ import { MdiIcon } from '@/components/shared/MdiIcon';
 
 const CATEGORY_LABELS: Record<string, string> = {
   moving_transport: 'Déménagement & Transport',
+  checkallpack: 'CheckAllPack (livraison moto / vélo)',
   plumbing: 'Plomberie',
   electricity: 'Électricité',
   painting: 'Peinture',
@@ -424,14 +425,7 @@ export default function SettingsPage() {
                         Object.entries((globalSettings as any).commissionRates).map(([category, rates]: [string, any]) => (
                           <tr key={category}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 capitalize">
-                              {category === 'marketplace' ? 'Marketplace' :
-                                category === 'moving_transport' ? 'Déménagement & Transport' :
-                                  category === 'plumbing' ? 'Plomberie' :
-                                    category === 'electricity' ? 'Électricité' :
-                                      category === 'painting' ? 'Peinture' :
-                                        category === 'handyman' ? 'Bricolage' :
-                                          category === 'cleaning' ? 'Nettoyage' :
-                                            category.replace('_', ' ')}
+                              {CATEGORY_LABELS[category] ?? category.replace('_', ' ')}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               {rates.standard}%

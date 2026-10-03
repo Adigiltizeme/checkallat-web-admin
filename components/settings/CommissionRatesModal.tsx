@@ -17,12 +17,19 @@ interface CommissionRatesModalProps {
   onSave: (rates: CommissionRates) => Promise<void>;
 }
 
+/**
+ * Taux CheckAllPack (livraisons à moto et à vélo) : tant qu'il n'est pas enregistré, le serveur applique
+ * le taux « Déménagement & Transport » — la ligne est donc proposée, préremplie avec ce taux.
+ */
+const withCourierRate = (rates: CommissionRates): CommissionRates =>
+  rates?.checkallpack || !rates?.moving_transport ? rates : { ...rates, checkallpack: { ...rates.moving_transport } };
+
 export function CommissionRatesModal({ isOpen, onClose, rates, onSave }: CommissionRatesModalProps) {
-  const [editedRates, setEditedRates] = useState<CommissionRates>(rates);
+  const [editedRates, setEditedRates] = useState<CommissionRates>(withCourierRate(rates));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (isOpen) setEditedRates(rates);
+    if (isOpen) setEditedRates(withCourierRate(rates));
   }, [isOpen, rates]);
 
   const handleSave = async () => {
@@ -53,6 +60,7 @@ export function CommissionRatesModal({ isOpen, onClose, rates, onSave }: Commiss
   const categoryLabels: Record<string, string> = {
     marketplace: 'Marketplace',
     moving_transport: 'Déménagement & Transport',
+    checkallpack: 'CheckAllPack (livraison moto / vélo)',
     plumbing: 'Plomberie',
     electricity: 'Électricité',
     painting: 'Peinture',

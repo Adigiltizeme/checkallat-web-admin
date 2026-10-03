@@ -167,7 +167,7 @@ export default function TermsPage() {
             <ol className="list-decimal pl-5 space-y-1 mb-2">
               <li>Le client soumet sa demande de service avec un prix estimatif. La demande est enregistrée et transmise au prestataire.</li>
               <li>Le prestataire peut accepter le prix estimatif ou proposer un ajustement (par exemple pour couvrir des matériaux supplémentaires). Le client est notifié et peut accepter ou refuser l'offre.</li>
-              <li>En cas d'acceptation, le client procède au paiement sécurisé via Stripe. Les fonds sont bloqués en séquestre jusqu'à la fin de la prestation.</li>
+              <li>En cas d'acceptation, le client procède au paiement sécurisé via Stripe. Les fonds sont bloqués en séquestre jusqu'à la fin de la prestation. Le prestataire ne se met en route qu'une fois ce paiement confirmé.</li>
             </ol>
             <p className="mb-2">
               <strong>En cas de refus du prix proposé par le client</strong> : si aucun paiement n'a été effectué, la demande de service est annulée et aucune transaction n'est prélevée.
@@ -344,6 +344,7 @@ export default function TermsPage() {
               <li>D'utiliser la plateforme à des fins frauduleuses, illégales ou abusives.</li>
               <li>De contourner la plateforme afin d'éviter les frais, commissions ou règles de sécurité applicables.</li>
               <li>De fausser les déclarations de montant lors d'un paiement en espèces.</li>
+              <li>Pour un chauffeur ou un livreur actif, de commander en tant que client un service relevant de sa propre activité : un chauffeur ne peut pas commander de transport ou de déménagement, et un livreur CheckAllPack ne peut pas commander de livraison CheckAllPack. L'autre activité lui reste accessible.</li>
               <li>De publier de faux avis, de fausses annonces ou des informations trompeuses.</li>
               <li>De harceler, menacer, discriminer ou insulter d'autres utilisateurs.</li>
               <li>D'usurper l'identité d'un tiers, d'un prestataire ou de CheckAll@t.</li>
