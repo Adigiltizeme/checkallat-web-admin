@@ -42,6 +42,14 @@ const FIELDS: Record<Section, { title: string; icon: string; groups: { title: st
         ],
       },
       {
+        title: 'Annulations par le chauffeur',
+        fields: [
+          { key: 'providerDropThreshold', label: 'Suspension des espèces à partir de', help: "Commandes payées dans l'app que le chauffeur annule après les avoir acceptées (sans motif légitime). Le moyen de paiement ne lui est communiqué qu'après acceptation ; il est averti une annulation avant le seuil.", unit: 'annulations', min: 1, max: 50, fallback: 3 },
+          { key: 'providerDropWindowDays', label: 'Sur une période de', help: '', unit: 'jours', min: 1, max: 365, fallback: 30 },
+          { key: 'cashSuspensionDays', label: 'Durée de la suspension', help: "Pendant cette durée, il ne reçoit plus de commandes payées en espèces.", unit: 'jours', min: 1, max: 90, fallback: 7 },
+        ],
+      },
+      {
         title: 'Fin de course',
         fields: [
           { key: 'autoConfirmCompletionHours', label: 'Confirmation automatique après', help: "Course terminée non confirmée par le client (sans litige ouvert) : confirmée automatiquement et le chauffeur est payé.", unit: 'h', min: 1, max: 336, fallback: 48 },
@@ -70,6 +78,14 @@ const FIELDS: Record<Section, { title: string; icon: string; groups: { title: st
           { key: 'enRouteFreeCancelMin', label: 'Prestataire en route : gratuit pendant', help: "Au-delà, ou si le prestataire est arrivé, les frais d'annulation s'appliquent.", unit: 'min', min: 0, max: 60, fallback: 5 },
           { key: 'abuseThreshold', label: 'Alerte abus à partir de', help: "Nombre d'annulations remboursées déclenchant un litige « fraude » à examiner.", unit: 'annulations', min: 1, max: 50, fallback: 3 },
           { key: 'abuseWindowDays', label: 'Sur une période de', help: '', unit: 'jours', min: 1, max: 365, fallback: 30 },
+        ],
+      },
+      {
+        title: 'Annulations par le prestataire',
+        fields: [
+          { key: 'providerDropThreshold', label: 'Suspension des espèces à partir de', help: "Commandes payées dans l'app que le prestataire annule après les avoir acceptées (sans motif légitime) ou auxquelles il ne se présente pas. Le moyen de paiement ne lui est communiqué qu'après acceptation ; il est averti une annulation avant le seuil.", unit: 'annulations', min: 1, max: 50, fallback: 3 },
+          { key: 'providerDropWindowDays', label: 'Sur une période de', help: '', unit: 'jours', min: 1, max: 365, fallback: 30 },
+          { key: 'cashSuspensionDays', label: 'Durée de la suspension', help: "Pendant cette durée, il ne reçoit plus de commandes payées en espèces.", unit: 'jours', min: 1, max: 90, fallback: 7 },
         ],
       },
       {

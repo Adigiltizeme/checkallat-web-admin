@@ -345,6 +345,7 @@ export default function TermsPage() {
               <li>De contourner la plateforme afin d'éviter les frais, commissions ou règles de sécurité applicables.</li>
               <li>De fausser les déclarations de montant lors d'un paiement en espèces.</li>
               <li>Pour un chauffeur ou un livreur actif, de commander en tant que client un service relevant de sa propre activité : un chauffeur ne peut pas commander de transport ou de déménagement, et un livreur CheckAllPack ne peut pas commander de livraison CheckAllPack. L'autre activité lui reste accessible.</li>
+              <li>Pour un chauffeur, un livreur ou un prestataire, d'écarter les commandes payées dans l'application. Le moyen de paiement ne lui est communiqué qu'après son acceptation ; une commande payée dans l'application qu'il annule ensuite sans motif légitime, ou à laquelle il ne se présente pas, est comptabilisée. Au-delà du seuil indiqué dans l'application sur la période de référence, l'acceptation de paiements en espèces est suspendue pour une durée limitée ; il en est averti au préalable.</li>
               <li>De publier de faux avis, de fausses annonces ou des informations trompeuses.</li>
               <li>De harceler, menacer, discriminer ou insulter d'autres utilisateurs.</li>
               <li>D'usurper l'identité d'un tiers, d'un prestataire ou de CheckAll@t.</li>
