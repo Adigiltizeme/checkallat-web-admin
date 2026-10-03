@@ -31,6 +31,7 @@ export const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   wave:               'Wave',
   free_money:         'Free Money',
   mtn_momo:           'MTN MoMo',
+  expresso:           'E-Money (Expresso)',
   moov_money:         'Moov Money',
   stc_pay:            'STC Pay',
   sadad:              'SADAD',

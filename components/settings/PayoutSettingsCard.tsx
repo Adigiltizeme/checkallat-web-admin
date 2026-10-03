@@ -6,18 +6,31 @@ import { SettingsSection } from './SettingsSection';
 import { usePendingSummary } from '@/contexts/PendingSummaryContext';
 
 interface ProviderInfo {
-  name: 'paymob' | 'moneroo' | 'wave' | 'stripe_connect';
+  name: 'paymob' | 'stripe_connect' | 'wave' | 'pawapay' | 'paydunya' | 'cinetpay';
   label: string;
   countries: string[];
   configured: boolean;
   enabled: boolean;
+  stats?: {
+    attempts: number;
+    paid: number;
+    failed: number;
+    uncertain: number;
+    successRate: number | null;
+    pausedCountries: string[];
+  };
 }
 
+/** Ordre d'affichage : prestataires principaux d'abord */
+const PROVIDER_ORDER: ProviderInfo['name'][] = ['paymob', 'stripe_connect', 'wave', 'pawapay', 'paydunya', 'cinetpay'];
+
 const PROVIDER_HELP: Record<ProviderInfo['name'], string> = {
-  paymob: 'Égypte — Vodafone Cash, Etisalat Cash, Orange Cash (versement instantané).',
-  moneroo: 'Sénégal, Mali, Côte d’Ivoire — Orange Money, Wave, Free Money, MTN, Moov.',
-  wave: 'Sénégal, Côte d’Ivoire — comptes Wave, en direct (prioritaire sur Moneroo pour Wave).',
+  paymob: 'Égypte — Vodafone Cash, Etisalat Cash, Orange Cash (versement instantané). Prestataire principal.',
   stripe_connect: 'France — virement SEPA via le compte Stripe Connect du bénéficiaire.',
+  wave: 'Sénégal, Côte d’Ivoire — comptes Wave, en direct (une clé API par pays).',
+  pawapay: 'Sénégal (Orange, Wave, Free), Côte d’Ivoire (Orange, Wave, MTN) — agrégateur agréé.',
+  paydunya: 'Sénégal (Orange, Wave, Free, E-Money), Côte d’Ivoire (Orange, Wave, MTN, Moov), Mali (Orange).',
+  cinetpay: 'Sénégal, Côte d’Ivoire, Mali (Orange, Moov) — une clé API par pays.',
 };
 
 /**
@@ -50,7 +63,7 @@ const DEFAULTS = {
   minimumPayout: { default: 0 },
   netCashCommissions: true,
   cashRestrictionThreshold: { default: 50 },
-  providers: { paymob: false, moneroo: false, wave: false, stripe_connect: false } as Record<string, boolean>,
+  providers: { paymob: false, stripe_connect: false, wave: false, pawapay: false, paydunya: false, cinetpay: false } as Record<string, boolean>,
 };
 
 const inputCls =
@@ -82,7 +95,10 @@ export function PayoutSettingsCard({ settings, setSettings }: Props) {
   // Prestataires de virement : identifiants présents sur le serveur (jamais affichés) et activation
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   useEffect(() => {
-    apiClient.get<ProviderInfo[]>('/payouts/admin/providers').then(setProviders).catch(() => setProviders([]));
+    apiClient
+      .get<ProviderInfo[]>('/payouts/admin/providers')
+      .then((list) => setProviders([...list].sort((a, b) => PROVIDER_ORDER.indexOf(a.name) - PROVIDER_ORDER.indexOf(b.name))))
+      .catch(() => setProviders([]));
   }, []);
   const providerEnabled = (name: ProviderInfo['name']) => !!(payout.providers ?? {})[name];
   const toggleProvider = (name: ProviderInfo['name'], value: boolean) =>
@@ -213,8 +229,12 @@ export function PayoutSettingsCard({ settings, setSettings }: Props) {
       <div className="mt-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Prestataires de virement</p>
         <p className="mt-1 text-xs text-gray-500">
-          Un virement est envoyé automatiquement par le premier prestataire activé qui couvre le pays et le compte du
-          bénéficiaire ; sinon il reste « à exécuter » par vous. Les identifiants se règlent sur le serveur, jamais ici.
+          Quand plusieurs prestataires activés couvrent le pays et le portefeuille du bénéficiaire, le plus fiable (taux de
+          réussite des 30 derniers jours) est essayé en premier. S&apos;il <strong>refuse</strong> le virement, le suivant
+          prend le relais automatiquement ; un prestataire qui enchaîne 3 échecs est mis de côté 30 minutes. Sans réponse
+          claire d&apos;un prestataire, rien n&apos;est renvoyé ailleurs (aucun risque de double versement) : le virement est
+          marqué <strong>à vérifier</strong>. Sans prestataire compatible, il reste « à exécuter » par vous. Les identifiants
+          se règlent sur le serveur, jamais ici.
         </p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           {providers.map((prov) => (
@@ -242,7 +262,31 @@ export function PayoutSettingsCard({ settings, setSettings }: Props) {
                     {prov.configured ? 'Identifiants présents' : 'Identifiants manquants sur le serveur'}
                   </span>
                 </span>
-                <span className="mt-0.5 block text-xs text-gray-500">{PROVIDER_HELP[prov.name]}</span>
+                <span className="mt-0.5 block text-xs text-gray-500">{PROVIDER_HELP[prov.name] ?? prov.countries.join(', ')}</span>
+                {prov.stats && prov.stats.attempts > 0 && (
+                  <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
+                    <span
+                      className={
+                        (prov.stats.successRate ?? 100) >= 95
+                          ? 'text-green-700'
+                          : (prov.stats.successRate ?? 100) >= 80
+                            ? 'text-amber-700'
+                            : 'text-red-700'
+                      }
+                    >
+                      Réussite : {prov.stats.successRate ?? '—'} %
+                    </span>
+                    <span className="text-gray-500">
+                      {prov.stats.paid} versé(s) · {prov.stats.failed} refusé(s)
+                      {prov.stats.uncertain > 0 ? ` · ${prov.stats.uncertain} à vérifier` : ''} (30 j)
+                    </span>
+                    {prov.stats.pausedCountries.length > 0 && (
+                      <span className="rounded-full bg-red-50 px-2 py-0.5 font-medium text-red-700">
+                        Mis de côté : {prov.stats.pausedCountries.join(', ')}
+                      </span>
+                    )}
+                  </span>
+                )}
               </span>
             </label>
           ))}

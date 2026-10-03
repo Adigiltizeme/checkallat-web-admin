@@ -23,6 +23,9 @@ interface Transfer {
   provider: string;
   providerReference: string | null;
   failureReason: string | null;
+  /** Issue incertaine chez un prestataire : à vérifier avant toute nouvelle tentative */
+  needsReview?: boolean;
+  attempts?: { provider: string; status: string; failureReason: string | null; reference: string | null; createdAt: string }[];
   payoutAccount: PayoutAccount | null;
   createdByEmail: string | null;
   processedAt: string | null;
@@ -31,6 +34,14 @@ interface Transfer {
   createdAt: string;
   _count: { payouts: number };
 }
+
+const ATTEMPT_LABELS: Record<string, string> = {
+  sending: 'envoi en cours',
+  processing: 'accepté, en attente',
+  paid: 'versé',
+  failed: 'refusé',
+  unknown: 'à vérifier',
+};
 
 export function TransfersView({ sector, zone, reloadKey }: { sector: string; zone: string | null; reloadKey: number }) {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -182,7 +193,24 @@ export function TransfersView({ sector, zone, reloadKey }: { sector: string; zon
                       <StatusPill status={t.status} map={TRANSFER_STATUS_LABELS} />
                       {t.provider === 'offset' && <p className="mt-1 text-xs text-gray-500">Entièrement compensé</p>}
                       {t.providerReference && <p className="mt-1 text-xs text-gray-500">Réf. {t.providerReference}</p>}
-                      {t.failureReason && <p className="mt-1 max-w-[180px] text-xs text-red-600">{t.failureReason}</p>}
+                      {t.needsReview && (
+                        <p className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                          ⚠ À vérifier chez le prestataire
+                        </p>
+                      )}
+                      {t.failureReason && <p className="mt-1 max-w-[220px] text-xs text-red-600">{t.failureReason}</p>}
+                      {(t.attempts?.length ?? 0) > 1 && (
+                        <ol className="mt-1 max-w-[240px] space-y-0.5 text-xs text-gray-500">
+                          {t.attempts!.map((a, i) => (
+                            <li key={i}>
+                              {i + 1}. {a.provider} —{' '}
+                              <span className={a.status === 'paid' ? 'text-green-700' : a.status === 'failed' ? 'text-red-600' : 'text-amber-700'}>
+                                {ATTEMPT_LABELS[a.status] ?? a.status}
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
                       {t.processedByEmail && t.status !== 'pending' && <p className="mt-1 text-xs text-gray-400">{t.processedByEmail}</p>}
                     </td>
                     <td className="px-4 py-3 text-right">
