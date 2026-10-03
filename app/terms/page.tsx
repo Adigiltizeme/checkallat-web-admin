@@ -76,7 +76,7 @@ export default function TermsPage() {
             <ul className="list-disc pl-5 space-y-1">
               <li>Le chauffeur ou livreur s'engage, lors de sa candidature, à effectuer ses courses <strong>uniquement avec le véhicule déclaré et validé</strong>. L'utilisation d'un autre véhicule entraîne la suspension du compte.</li>
               <li>Tout véhicule motorisé, deux-roues compris, doit être immatriculé et assuré. Le permis de conduire est exigé, sauf pour un cyclomoteur (≤ 50 cm³ ou électrique ≤ 4 kW) dans les pays où la réglementation ne l'impose pas. Les vélos à assistance électrique dépassant 25 km/h (speed bikes) et les scooters électriques sont des véhicules motorisés.</li>
-              <li>Le livreur à vélo fournit une photo de lui avec son vélo et un justificatif du vélo. Pendant les courses, sa vitesse moyenne est contrôlée : une vitesse incompatible avec un vélo déclenche un avertissement puis une vérification de son compte par l'équipe CheckAll@t.</li>
+              <li>Le livreur à vélo fournit des photos de son vélo, dont une de lui avec son vélo ; aucun document (facture, assurance, immatriculation) n'est exigé. Pendant les courses, sa vitesse moyenne est contrôlée : une vitesse incompatible avec un vélo déclenche un avertissement puis une vérification de son compte par l'équipe CheckAll@t.</li>
               <li>Tout changement de véhicule (type, catégorie ou immatriculation) doit être déclaré dans l'application avec les pièces correspondantes. Le compte ne reçoit plus de courses jusqu'à la validation du nouveau véhicule.</li>
             </ul>
           </section>

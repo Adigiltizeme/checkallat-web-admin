@@ -453,12 +453,15 @@ export function DriverForm({ driver, scope: scopeProp, onSuccess, onCancel }: Dr
               required={licenseRequired}
             />
           )}
-          <SingleFileUpload
-            label={isBicycle ? 'Justificatif du vélo (facture / assurance)' : "Document d'immatriculation du véhicule"}
-            value={formData.vehicleInsurance}
-            onChange={(url) => setFormData({ ...formData, vehicleInsurance: url })}
-            required
-          />
+          {/* Vélo : aucun document du véhicule n'est imposé par la loi */}
+          {!isBicycle && (
+            <SingleFileUpload
+              label="Document d'immatriculation du véhicule"
+              value={formData.vehicleInsurance}
+              onChange={(url) => setFormData({ ...formData, vehicleInsurance: url })}
+              required
+            />
+          )}
         </div>
       </div>
 

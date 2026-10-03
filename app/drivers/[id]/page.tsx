@@ -376,7 +376,7 @@ export default function DriverDetailPage() {
       {vehicleDocUrl && (
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            {driver.vehicleType === 'bicycle' ? 'Justificatif du vélo (facture / assurance)' : 'Document du véhicule'}
+            {driver.vehicleType === 'bicycle' ? 'Document du vélo (fourni par le livreur, facultatif)' : 'Document du véhicule'}
           </h2>
           <button
             onClick={() => setLightboxSrc(vehicleDocUrl)}
